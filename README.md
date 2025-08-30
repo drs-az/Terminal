@@ -1,14 +1,14 @@
 # Terminal List
 
-**Terminal List** is a browser-based Progressive Web App (PWA) for note-taking and list-making in a terminal-style interface.  
-It supports passcode protection with AES-256 encryption, JSON export/import, and an emergency data wipe function.
+**Terminal List** is a browser-based Progressive Web App (PWA) for managing tasks and notes in a terminal-style interface.
+It supports optional passcode protection with AES-256 encryption, JSON export/import, and an emergency data wipe function.
 
 ## Features
 
-- 📝 **Notes**: Create, view, edit, and delete notes via simple commands.
-- 📦 **Lists**: Maintain task lists, toggle items as done, and delete lists.
+- ✅ **Tasks**: Add items, tag them, set priorities or due dates, and search.
+- 📝 **Notes**: Create standalone notes or link them to tasks.
 - 🔐 **Passcode Lock**: Protect your data with AES-256-GCM encryption (derived with PBKDF2).
-- 📤 **Export/Import**: Backup or transfer notes and lists in JSON format.
+- 📤 **Export/Import**: Backup or restore tasks and notes in JSON format.
 - 🚨 **Emergency Wipe**: One command securely wipes all local data.
 - 📱 **PWA Support**: Installable, offline-capable, works across desktop and mobile.
 
@@ -57,29 +57,37 @@ Once hosted over HTTPS, you can install Terminal List on multiple devices.
 
 Type commands into the input bar or directly in the terminal view.
 
-### Notes
-- `notes` — list all notes
-- `note "Title"` — create a note
-- `open note <id|title>` — view a note
-- `write note <id|title> "text"` — append text
-- `del note <id|title>` — delete a note
+### Tasks
+- `add <text>` — add a new item
+- `list [all|open|done|@tag]` — list items
+- `show <id|#>` — show a task with attached notes
+- `done <id|#>` — mark done
+- `undone <id|#>` — unmark done
+- `delete <id|#>` — delete item
+- `edit <id|#> <text>` — edit text
+- `move <id|#> <up|down|n>` — reorder item
+- `tag <id|#> +foo -bar` — add/remove tags
+- `due <id|#> <YYYY-MM-DD>` — set due date (or "clear")
+- `priority <id|#> <H|M|L>` — set priority
+- `search <query>` — find text in items
 
-### Lists
-- `lists` — list all lists
-- `list "Title"` — create a list
-- `add <list> "item"` — add an item
-- `show <list>` — show items in a list
-- `done <list> <itemId>` — toggle an item done/undone
-- `del list <id|title>` — delete a list
+### Notes
+- `note <text>` — add a note
+- `notes [all|@tag|task:<ref>]` — list notes
+- `nedit <id|#> <text>` — edit a note
+- `ndelete <id|#>` — delete a note
+- `nlink <note|#> <task|#>` — link a note to a task
+- `nunlink <note|#>` — unlink note from task
+- `nsearch <query>` — find text in notes
 
 ### Security & Data
-- `setpass` — set/replace passcode (AES-256-GCM encryption)
-- `lock` — lock the app
-- `unlock` — unlock with passcode
-- `export` — export data to JSON file
-- `import` — import JSON (merge)
-- `import replace` — import JSON (replace all data)
-- `wipe` — emergency data wipe (confirmation required)
+- `stats` — summary counts
+- `export` — download JSON (tasks + notes)
+- `import` — paste JSON to replace all data
+- `wipe` — clear all data (with confirm)
+- `setpass` — set or clear passcode
+- `lock` — clear decrypted data from memory
+- `unlock` — restore data with passcode
 
 ## Security Notes
 
