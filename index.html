@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#32cd32">
   <title>Terminal List PWA</title>
   <style>
     :root{
@@ -593,6 +595,10 @@
       println('Type HELP for tasks & notes commands.');
       localStorage.setItem('terminal-list-initialized-v2','1');
     }
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("service-worker.js")
+      .then(() => console.log("Service Worker registered"));
+  }
   </script>
 </body>
 </html>
