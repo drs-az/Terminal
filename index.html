@@ -162,14 +162,39 @@
     /************
      * STORAGE
      ************/
-    const STORE_KEY_V2 = 'terminal-list-state-v2'; // {items:[], notes:[]}
+    const STORE_KEY_V2 = 'terminal-list-state-v2'; // {items:[], notes:[]} or {version,enc:{}}
     const STORE_KEY_V1 = 'terminal-list-items-v1'; // legacy items-only
+
+    const enc = new TextEncoder();
+    const dec = new TextDecoder();
+    function b64(buf){ return btoa(String.fromCharCode(...new Uint8Array(buf))); }
+    function b64ToBuf(str){ return Uint8Array.from(atob(str), c=>c.charCodeAt(0)); }
+    async function deriveKey(pass, saltBytes){
+      const baseKey = await crypto.subtle.importKey('raw', enc.encode(pass), 'PBKDF2', false, ['deriveKey']);
+      return crypto.subtle.deriveKey(
+        { name:'PBKDF2', salt: saltBytes, iterations:100000, hash:'SHA-256' },
+        baseKey,
+        { name:'AES-GCM', length:256 },
+        false,
+        ['encrypt','decrypt']
+      );
+    }
+
+    let passKey = null; // CryptoKey when unlocked
+    let passSalt = null; // base64 string
+    let locked = false;
 
     function loadState(){
       try{
         const raw = localStorage.getItem(STORE_KEY_V2);
         if (raw){
           const obj = JSON.parse(raw);
+          if (obj && obj.enc){
+            // encrypted payload present
+            locked = true;
+            passSalt = obj.enc.salt;
+            return { items: [], notes: [] };
+          }
           if (obj && Array.isArray(obj.items) && Array.isArray(obj.notes)){
             return obj;
           }
@@ -186,7 +211,19 @@
       }catch{}
       return { items: [], notes: [] };
     }
-    function saveState(state){ localStorage.setItem(STORE_KEY_V2, JSON.stringify(state)); }
+    async function saveState(state){
+      try{
+        if (passKey){
+          const iv = crypto.getRandomValues(new Uint8Array(12));
+          const data = enc.encode(JSON.stringify({ items: state.items, notes: state.notes }));
+          const buf = await crypto.subtle.encrypt({ name:'AES-GCM', iv }, passKey, data);
+          const payload = { version: 3, enc: { v:1, salt: passSalt, iv: b64(iv), data: b64(buf) } };
+          localStorage.setItem(STORE_KEY_V2, JSON.stringify(payload));
+        } else {
+          localStorage.setItem(STORE_KEY_V2, JSON.stringify({ items: state.items, notes: state.notes }));
+        }
+      }catch(err){ console.error(err); }
+    }
     function makeId(){ return Math.random().toString(36).slice(2,8); }
 
     let state = loadState();
@@ -332,6 +369,9 @@
       println('  EXPORT                    download JSON (tasks + notes)');
       println('  IMPORT                    paste JSON to import');
       println('  WIPE                      clear all (with confirm)');
+      println('  SETPASS                   set or clear passcode');
+      println('  LOCK                      clear decrypted data from memory');
+      println('  UNLOCK                    restore data with passcode');
     };
 
     let lastTaskListCache = null;
@@ -550,6 +590,63 @@
     };
     cmd.wipe = ()=> openModal();
 
+    cmd.setpass = async ()=>{
+      if (locked){ println('unlock first', 'error'); return; }
+      println('Enter new passcode (blank to disable):', 'muted');
+      const pass = await getNextLine();
+      if (!pass){
+        passKey = null; passSalt = null;
+        await saveState(state);
+        println('passcode cleared.', 'ok');
+        return;
+      }
+      const saltBytes = crypto.getRandomValues(new Uint8Array(16));
+      passSalt = b64(saltBytes);
+      passKey = await deriveKey(pass, saltBytes);
+      await saveState(state);
+      println('passcode set.', 'ok');
+    };
+
+    cmd.lock = ()=>{
+      if (locked){ println('already locked','muted'); return; }
+      if (!passSalt){ println('no passcode set','error'); return; }
+      items = []; notes = [];
+      state.items = items; state.notes = notes;
+      passKey = null;
+      locked = true;
+      lastTaskListCache = null; lastNoteListCache = null;
+      println('locked.', 'ok');
+    };
+
+    cmd.unlock = async ()=>{
+      if (!locked){ println('not locked','muted'); return; }
+      const raw = localStorage.getItem(STORE_KEY_V2);
+      if (!raw){ println('nothing to unlock','error'); return; }
+      try{
+        const obj = JSON.parse(raw);
+        if (!obj.enc){ println('no passcode set','error'); return; }
+        println('Enter passcode:', 'muted');
+        const pass = await getNextLine();
+        const saltBytes = b64ToBuf(obj.enc.salt);
+        const key = await deriveKey(pass, saltBytes);
+        const iv = b64ToBuf(obj.enc.iv);
+        const data = b64ToBuf(obj.enc.data);
+        const buf = await crypto.subtle.decrypt({name:'AES-GCM', iv}, key, data);
+        const decoded = JSON.parse(dec.decode(new Uint8Array(buf)));
+        if (decoded && Array.isArray(decoded.items) && Array.isArray(decoded.notes)){
+          state = decoded;
+          items = state.items;
+          notes = state.notes;
+          passKey = key;
+          passSalt = obj.enc.salt;
+          locked = false;
+          println('unlocked.', 'ok');
+        } else {
+          throw new Error('bad data');
+        }
+      }catch(e){ println('unlock failed','error'); }
+    };
+
     /************
      * COMMAND LOOP
      ************/
@@ -562,6 +659,10 @@
       const args = parts;
       const fn = cmd[name];
       if (!fn){ println('unknown command. type HELP.', 'error'); return; }
+      if (locked && !['unlock','help'].includes(name)){
+        println('data locked. type UNLOCK.', 'error');
+        return;
+      }
       Promise.resolve(fn(args)).catch(err=>println('error: '+err.message,'error'));
     }
     function getNextLine(){
@@ -686,6 +787,7 @@
       println('Type HELP for tasks & notes commands.');
       localStorage.setItem('terminal-list-initialized-v4','1');
     }
+    if (locked) println('Data is locked. Type UNLOCK to access.', 'muted');
 
     // Focus on output tap
     output.addEventListener('pointerdown', ()=>command.focus());
