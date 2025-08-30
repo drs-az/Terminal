@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Terminal List PWA</title>
   <!-- PWA refs -->
-  <link rel="manifest" href="manifest.json">
+  <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#32cd32">
   <style>
     :root{
@@ -147,7 +147,7 @@
         The browser didn’t expose the install prompt yet.
       </div>
       <div class="line" style="margin-top:6px">
-        Ensure: <code>manifest.json</code> (with 192/512 icons) is reachable, a <code>service-worker.js</code> is registered and controlling this page, and you’re on HTTPS or localhost.
+          Ensure: <code>manifest.webmanifest</code> (with 192/512 icons) is reachable, a <code>sw.js</code> is registered and controlling this page, and you’re on HTTPS or localhost.
       </div>
       <div class="line" style="margin-top:6px">
         iOS Safari: use Share → “Add to Home Screen” (no programmatic prompt on iOS).
@@ -612,7 +612,7 @@
 
     // Register SW and wait until it's controlling the page
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('service-worker.js')
+      navigator.serviceWorker.register('sw.js')
         .then(() => navigator.serviceWorker.ready)
         .then(() => {
           setStatus('Ready');
