@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Terminal List PWA</title>
+  <style>
+    :root{
+      --bg: #000;
+      --fg: #32cd32; /* limegreen */
+      --border: #32cd32;
+      --font: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --header-h: 56px;
+      --input-h: 52px;
+    }
+    /* Base reset kept minimal to avoid styling drift */
+    html, body {
+      height: 100%;
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: var(--font);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      overflow: hidden; /* prevent body scroll; use #output scroll instead */
+    }
+
+    /* Fixed header (left-aligned like the old style) */
+    #header{
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: var(--header-h);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 6px 10px;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      z-index: 1000;
+      line-height: 1.2;
+      user-select: none;
+    }
+    #header .title{font-weight: 700;}
+    #header .subtitle{opacity: 0.9;}
+
+    /* Output area sits between header and input */
+    #output{
+      position: absolute;
+      top: var(--header-h);
+      left: 0; right: 0;
+      bottom: calc(var(--input-h) + env(safe-area-inset-bottom));
+      overflow-y: auto;
+      padding: 10px;
+      box-sizing: border-box;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* Fixed input bar pinned to the bottom */
+    #input-bar{
+      position: fixed;
+      left: 0; right: 0;
+      height: var(--input-h);
+      bottom: env(safe-area-inset-bottom); /* respect notches */
+      background: var(--bg);
+      border-top: 1px solid var(--border);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      box-sizing: border-box;
+      transform: translateY(0); /* dynamically adjusted via JS for virtual keyboard */
+      will-change: transform;
+    }
+
+    /* Prompt caret text */
+    #prompt-label{
+      white-space: pre;
+      user-select: none;
+    }
+
+    /* Input looks like plain terminal text (no heavy restyle) */
+    #command{
+      flex: 1;
+      min-width: 0;
+      background: transparent;
+      color: var(--fg);
+      font-family: var(--font);
+      font-size: 16px;
+      border: 0;
+      outline: none;
+      caret-color: var(--fg);
+    }
+
+    /* Modal for WIPE with terminal feel */
+    #modal{
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,0,0,0.92);
+      z-index: 2000;
+    }
+    #modal .card{
+      border: 1px solid var(--border);
+      padding: 16px 20px;
+      max-width: 520px;
+      width: calc(100% - 40px);
+      background: #000;
+      box-sizing: border-box;
+    }
+    .row{
+      display: flex;
+      gap: 10px;
+      margin-top: 14px;
+      justify-content: flex-end;
+    }
+    button.terminal{
+      background: transparent;
+      color: var(--fg);
+      border: 1px solid var(--border);
+      padding: 8px 14px;
+      font-family: var(--font);
+      cursor: pointer;
+    }
+    button.terminal:hover{ outline: 1px dashed var(--border); }
+
+    /* Utility for text lines */
+    .line{ white-space: pre-wrap; word-break: break-word; }
+
+    /* Prevent zoom-on-focus iOS */
+    @supports (-webkit-touch-callout: none) {
+      #command { font-size: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <div id="header" role="banner" aria-label="Terminal header">
+    <div class="title">TERMINAL LIST PWA</div>
+    <div class="subtitle">Type help to begin</div>
+  </div>
+
+  <!-- Scrollable Output -->
+  <div id="output" role="log" aria-live="polite"></div>
+
+  <!-- Input Bar (pinned to bottom / above keyboard) -->
+  <div id="input-bar" role="group" aria-label="Command input">
+    <span id="prompt-label">&gt; </span>
+    <input id="command" type="text" inputmode="text" autocapitalize="none" autocomplete="off" spellcheck="false" placeholder="enter command..." />
+  </div>
+
+  <!-- Terminal-style WIPE modal -->
+  <div id="modal" role="dialog" aria-modal="true" aria-labelledby="wipe-title">
+    <div class="card">
+      <div id="wipe-title" class="line">Confirm WIPE</div>
+      <div class="line" style="margin-top:6px">Are you sure you want to WIPE all data?</div>
+      <div class="row">
+        <button class="terminal" id="btn-cancel">Cancel</button>
+        <button class="terminal" id="btn-confirm">WIPE</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const output    = document.getElementById('output');
+    const command   = document.getElementById('command');
+    const inputBar  = document.getElementById('input-bar');
+    const modal     = document.getElementById('modal');
+    const btnCancel = document.getElementById('btn-cancel');
+    const btnOK     = document.getElementById('btn-confirm');
+
+    // --- Minimal terminal behavior ---
+    function printLine(text){
+      const div = document.createElement('div');
+      div.className = 'line';
+      div.textContent = text;
+      output.appendChild(div);
+      output.scrollTop = output.scrollHeight;
+    }
+
+    function handle(cmd){
+      const c = (cmd || '').trim();
+      if (!c) return;
+      printLine('> ' + c);
+      if (c.toLowerCase() === 'wipe'){
+        openModal();
+      } else if (c.toLowerCase() === 'help'){
+        printLine('Commands: HELP, WIPE');
+      } else {
+        printLine('Unknown command. Type HELP.');
+      }
+    }
+
+    command.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter'){
+        handle(command.value);
+        command.value = '';
+      }
+    });
+
+    // --- Terminal modal controls ---
+    function openModal(){ modal.style.display = 'flex'; }
+    function closeModal(){ modal.style.display = 'none'; }
+    btnCancel.addEventListener('click', closeModal);
+    btnOK.addEventListener('click', () => {
+      output.innerHTML = '';
+      closeModal();
+      printLine('All data wiped.');
+    });
+
+    // --- Keep input bar pinned ABOVE the virtual keyboard (mobile) ---
+    // Uses VisualViewport API where available. Falls back gracefully otherwise.
+    (function setupViewportPinning(){
+      const vv = window.visualViewport;
+      if (!vv){
+        // Fallback: nothing to do; CSS fixed bottom handles desktop.
+        return;
+      }
+
+      function reposition(){
+        // How much of the viewport is obscured by the OSK (on-screen keyboard)?
+        const obscured = Math.max(0, (window.innerHeight - (vv.height + vv.offsetTop)));
+        // Move the input bar up by the obscured amount so it's visible above the keyboard.
+        inputBar.style.transform = 'translateY(' + (-obscured) + 'px)';
+        // Also extend the output area's bottom so content doesn't hide behind the moved input.
+        const inputH = inputBar.getBoundingClientRect().height;
+        output.style.bottom = 'calc(' + inputH + 'px + env(safe-area-inset-bottom) + ' + obscured + 'px)';
+      }
+
+      vv.addEventListener('resize', reposition);
+      vv.addEventListener('scroll', reposition);
+      window.addEventListener('orientationchange', () => setTimeout(reposition, 50));
+      window.addEventListener('resize', reposition);
+
+      // Initial position after layout
+      window.requestAnimationFrame(reposition);
+    })();
+
+    // Autofocus input on tap anywhere in output area
+    output.addEventListener('pointerdown', () => command.focus());
+  </script>
+</body>
+</html>
