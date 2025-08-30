@@ -238,6 +238,7 @@
      ************/
     const output = document.getElementById('output');
     const command = document.getElementById('command');
+    let awaitingLine = false;
     const modal = document.getElementById('modal');
     const btnCancel = document.getElementById('btn-cancel');
     const btnOK = document.getElementById('btn-confirm');
@@ -666,6 +667,7 @@
       Promise.resolve(fn(args)).catch(err=>println('error: '+err.message,'error'));
     }
     function getNextLine(){
+      awaitingLine = true;
       return new Promise(resolve => {
         function handler(e){
           if (e.key === 'Enter'){
@@ -673,6 +675,7 @@
             println('> ' + val);
             command.value = '';
             command.removeEventListener('keydown', handler);
+            awaitingLine = false;
             resolve(val);
           }
         }
@@ -681,6 +684,7 @@
     }
     command.addEventListener('keydown', (e)=>{
       if (e.key === 'Enter'){
+        if (awaitingLine) return;
         const v = command.value;
         command.value='';
         parseAndRun(v);
