@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Terminal List PWA</title>
+  <!-- PWA refs -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#32cd32">
+  <style>
+    :root{
+      --bg: #000;
+      --fg: #32cd32; /* limegreen */
+      --border: #32cd32;
+      --font: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --header-h: 56px;
+      --input-h: 52px;
+    }
+    html, body {
+      height: 100%;
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: var(--font);
+      overflow: hidden;
+    }
+    #header{
+      position: fixed; top: 0; left: 0; right: 0;
+      height: var(--header-h);
+      padding: 6px 10px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
+      z-index: 1000;
+      line-height: 1.2;
+      user-select: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    #header .left{ display: flex; flex-direction: column; }
+    #installBtn{
+      background: transparent;
+      color: var(--fg);
+      border: 1px solid var(--border);
+      padding: 6px 10px;
+      font-family: var(--font);
+      cursor: pointer;
+      display: inline-block; /* always visible */
+      opacity: 0.7;          /* enabled state will set full opacity */
+    }
+    #installBtn.enabled{ opacity: 1; }
+    #output{
+      position: absolute;
+      top: var(--header-h);
+      left: 0; right: 0;
+      bottom: calc(var(--input-h) + env(safe-area-inset-bottom));
+      padding: 10px;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      box-sizing: border-box;
+    }
+    #input-bar{
+      position: fixed; left: 0; right: 0;
+      height: var(--input-h);
+      bottom: env(safe-area-inset-bottom);
+      border-top: 1px solid var(--border);
+      background: var(--bg);
+      z-index: 1000;
+      display: flex; align-items: center; gap: 8px;
+      padding: 6px 10px; box-sizing: border-box;
+      transform: translateY(0);
+      will-change: transform;
+    }
+    #prompt-label{ user-select: none; white-space: pre; }
+    #command{
+      flex: 1; min-width: 0;
+      background: transparent; color: var(--fg);
+      border: 0; outline: none; caret-color: var(--fg);
+      font-family: var(--font); font-size: 16px;
+    }
+    .line{ white-space: pre-wrap; word-break: break-word; }
+    .muted{ opacity: 0.85; }
+    .error{ color: #ff4d4d; }
+    .ok{ color: #7fffd4; }
+    .task-done{ opacity: 0.7; text-decoration: line-through; }
+    /* Modal */
+    #modal, #install-help{
+      position: fixed; inset: 0; display: none;
+      align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.92);
+      z-index: 2000;
+    }
+    .card{
+      border: 1px solid var(--border);
+      padding: 16px 20px;
+      width: min(560px, calc(100% - 40px));
+      background: #000;
+      box-sizing: border-box;
+    }
+    .row{ display:flex; gap:10px; margin-top:14px; justify-content:flex-end; }
+    button.terminal{
+      background: transparent; color: var(--fg);
+      border: 1px solid var(--border);
+      padding: 8px 14px; font-family: var(--font);
+      cursor: pointer;
+    }
+    button.terminal:hover{ outline: 1px dashed var(--border); }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <div class="left">
+      <div class="title">TERMINAL LIST PWA</div>
+      <div class="subtitle">Type HELP to begin</div>
+    </div>
+    <button id="installBtn" aria-label="Install app">Install</button>
+  </div>
+
+  <div id="output" role="log" aria-live="polite"></div>
+
+  <div id="input-bar" role="group" aria-label="Command input">
+    <span id="prompt-label">&gt; </span>
+    <input id="command" type="text" inputmode="text" autocapitalize="none"
+           autocomplete="off" spellcheck="false" placeholder="enter command..." />
+  </div>
+
+  <div id="modal" role="dialog" aria-modal="true" aria-labelledby="wipe-title">
+    <div class="card">
+      <div id="wipe-title" class="line">Confirm WIPE</div>
+      <div class="line" style="margin-top:6px">Are you sure you want to WIPE all data?</div>
+      <div class="row">
+        <button class="terminal" id="btn-cancel">Cancel</button>
+        <button class="terminal" id="btn-confirm">WIPE</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="install-help" role="dialog" aria-modal="true" aria-labelledby="install-title">
+    <div class="card">
+      <div id="install-title" class="line">Install Help</div>
+      <div class="line" style="margin-top:6px">
+        If the install prompt isn’t available, make sure this is served over HTTPS (or localhost),
+        <code>manifest.json</code> is reachable with valid icons, and a <code>service-worker.js</code> is registered
+        in the same scope as this page.
+      </div>
+      <div class="line" style="margin-top:6px">
+        Android Chrome: use the menu (⋮) → “Install app” if the button isn’t enabled.
+      </div>
+      <div class="row">
+        <button class="terminal" id="install-close">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /************
+     * STORAGE
+     ************/
+    const STORE_KEY_V2 = 'terminal-list-state-v2'; // {items:[], notes:[]}
+    const STORE_KEY_V1 = 'terminal-list-items-v1'; // legacy items-only
+
+    function loadState(){
+      try{
+        const raw = localStorage.getItem(STORE_KEY_V2);
+        if (raw){
+          const obj = JSON.parse(raw);
+          if (obj && Array.isArray(obj.items) && Array.isArray(obj.notes)){
+            return obj;
+          }
+        }
+      }catch{}
+      try{
+        const raw1 = localStorage.getItem(STORE_KEY_V1);
+        if (raw1){
+          const items = JSON.parse(raw1) || [];
+          const state = { items, notes: [] };
+          saveState(state);
+          return state;
+        }
+      }catch{}
+      return { items: [], notes: [] };
+    }
+    function saveState(state){ localStorage.setItem(STORE_KEY_V2, JSON.stringify(state)); }
+    function makeId(){ return Math.random().toString(36).slice(2,8); }
+
+    let state = loadState();
+    let items = state.items;
+    let notes = state.notes;
+
+    function saveItems(v){ state.items = v; saveState(state); }
+    function saveNotes(v){ state.notes = v; saveState(state); }
+
+    /************
+     * UI HELPERS
+     ************/
+    const output = document.getElementById('output');
+    const command = document.getElementById('command');
+    const modal = document.getElementById('modal');
+    const btnCancel = document.getElementById('btn-cancel');
+    const btnOK = document.getElementById('btn-confirm');
+
+    function println(text, cls){
+      const div = document.createElement('div');
+      div.className = 'line' + (cls ? ' ' + cls : '');
+      div.textContent = text;
+      output.appendChild(div);
+      output.scrollTop = output.scrollHeight;
+    }
+    function countNotesForTask(taskId){
+      return notes.filter(n => n.taskId === taskId).length;
+    }
+    function printTask(t, indexShown){
+      const box = t.done ? '☑' : '☐';
+      const pri = t.pri === 'H' ? ' !H' : t.pri === 'M' ? ' !M' : t.pri === 'L' ? ' !L' : '';
+      const tags = (t.tags||[]).map(s=>' @'+s).join('');
+      const due = t.due ? ' ^' + t.due : '';
+      const idx = typeof indexShown === 'number' ? '['+indexShown+'] ' : '';
+      const noteCount = countNotesForTask(t.id);
+      const noteBadge = noteCount ? ` [📝x${noteCount}]` : '';
+      const line = `${idx}(${t.id}) ${box} ${t.text}${tags}${due}${pri}${noteBadge}`;
+      const div = document.createElement('div');
+      div.className = 'line' + (t.done ? ' task-done' : '');
+      div.textContent = line;
+      output.appendChild(div);
+    }
+    function printList(arr, title){
+      if (title) println(title, 'muted');
+      if (!arr.length){ println('— no items —', 'muted'); return; }
+      arr.forEach((t,i)=>printTask(t,i+1));
+      output.scrollTop = output.scrollHeight;
+    }
+    function printNote(n, indexShown){
+      const idx = typeof indexShown === 'number' ? '['+indexShown+'] ' : '';
+      const tags = (n.tags||[]).map(s=>' @'+s).join('');
+      const link = n.taskId ? ` linked:(${n.taskId})` : '';
+      const line = `${idx}(${n.id}) 📝 ${n.text}${tags}${link}`;
+      const div = document.createElement('div');
+      div.className = 'line';
+      div.textContent = line;
+      output.appendChild(div);
+    }
+    function printNotes(arr, title){
+      if (title) println(title, 'muted');
+      if (!arr.length){ println('— no notes —', 'muted'); return; }
+      arr.forEach((n,i)=>printNote(n,i+1));
+      output.scrollTop = output.scrollHeight;
+    }
+
+    /************
+     * FILTER/RESOLUTION
+     ************/
+    function listFilteredTasks(filter){
+      let arr = [...items];
+      arr.sort((a,b)=>a.createdAt - b.createdAt);
+      if (!filter || filter==='open') arr = arr.filter(t=>!t.done);
+      else if (filter==='done') arr = arr.filter(t=>t.done);
+      else if (filter==='all') { }
+      else if (filter.startsWith('@')) {
+        const tag = filter.slice(1).toLowerCase();
+        arr = arr.filter(t=>(t.tags||[]).map(s=>s.toLowerCase()).includes(tag));
+      }
+      return arr;
+    }
+    function listFilteredNotes(filter){
+      let arr = [...notes];
+      arr.sort((a,b)=>a.createdAt - b.createdAt);
+      if (!filter || filter==='all') { /* no-op */ }
+      else if (filter.startsWith('@')) {
+        const tag = filter.slice(1).toLowerCase();
+        arr = arr.filter(n=>(n.tags||[]).map(s=>s.toLowerCase()).includes(tag));
+      } else if (filter.startsWith('task:')){
+        const ref = filter.slice(5).trim();
+        const t = resolveTaskRef(ref, lastTaskListCache);
+        if (t) arr = arr.filter(n=>n.taskId === t.id);
+        else arr = [];
+      }
+      return arr;
+    }
+    function resolveTaskRef(ref, currentList){
+      if (!ref) return null;
+      const byId = items.find(t=>t.id === ref);
+      if (byId) return byId;
+      const n = parseInt(ref,10);
+      if (!isNaN(n) && currentList && n>=1 && n<=currentList.length) return currentList[n-1];
+      if (!isNaN(n) && n>=1 && n<=items.length) return items[n-1];
+      return null;
+    }
+    function resolveNoteRef(ref, currentList){
+      if (!ref) return null;
+      const byId = notes.find(n=>n.id === ref);
+      if (byId) return byId;
+      const n = parseInt(ref,10);
+      if (!isNaN(n) && currentList && n>=1 && n<=currentList.length) return currentList[n-1];
+      if (!isNaN(n) && n>=1 && n<=notes.length) return notes[n-1];
+      return null;
+    }
+
+    /************
+     * COMMANDS
+     ************/
+    const cmd = {};
+    cmd.help = () => {
+      println('Tasks:');
+      println('  ADD <text>                add a new item');
+      println('  LIST [all|open|done|@tag] list items');
+      println('  SHOW <id|#>               show a task with attached notes');
+      println('  DONE <id|#>               mark done');
+      println('  UNDONE <id|#>             unmark done');
+      println('  DELETE <id|#>             delete item');
+      println('  EDIT <id|#> <text>        edit text');
+      println('  MOVE <id|#> <up|down|n>   reorder item');
+      println('  TAG <id|#> +foo -bar      add/remove tags');
+      println('  DUE <id|#> <YYYY-MM-DD>   set due date (or "clear")');
+      println('  PRIORITY <id|#> <H|M|L>   set priority');
+      println('  SEARCH <query>            find text in items');
+      println('Notes:');
+      println('  NOTE <text>               add a note');
+      println('  NOTES [all|@tag|task:<ref>] list notes');
+      println('  NEDIT <id|#> <text>       edit a note');
+      println('  NDELETE <id|#>            delete a note');
+      println('  NLINK <note|#> <task|#>   link a note to a task');
+      println('  NUNLINK <note|#>          unlink note from task');
+      println('  NSEARCH <query>           find text in notes');
+      println('General:');
+      println('  STATS                     summary counts');
+      println('  EXPORT                    download JSON (tasks + notes)');
+      println('  IMPORT                    paste JSON to import');
+      println('  WIPE                      clear all (with confirm)');
+    };
+
+    let lastTaskListCache = null;
+    cmd.add = (args)=>{
+      const text = args.join(' ').trim();
+      if (!text){ println('usage: ADD <text>', 'error'); return; }
+      const t = { id: makeId(), text, done:false, tags:[], due:null, pri:null, createdAt: Date.now(), doneAt:null };
+      items.push(t); saveItems(items);
+      println('added.', 'ok'); printTask(t);
+    };
+    cmd.list = (args)=>{
+      const filter = args[0] || 'open';
+      lastTaskListCache = listFilteredTasks(filter);
+      printList(lastTaskListCache, 'LIST ' + filter.toUpperCase());
+    };
+    cmd.show = (args)=>{
+      const ref = args[0];
+      const t = resolveTaskRef(ref, lastTaskListCache);
+      if (!t) return println('not found', 'error');
+      printTask(t);
+      const attached = notes.filter(n=>n.taskId === t.id);
+      if (attached.length){
+        println('— notes —', 'muted');
+        attached.forEach((n,i)=>printNote(n,i+1));
+      }else{
+        println('— no notes —', 'muted');
+      }
+    };
+    cmd.done = (args)=>{
+      const t = resolveTaskRef(args[0], lastTaskListCache);
+      if (!t) return println('not found', 'error');
+      t.done = true; t.doneAt = Date.now(); saveItems(items);
+      println('marked done.', 'ok'); printTask(t);
+    };
+    cmd.undone = (args)=>{
+      const t = resolveTaskRef(args[0], lastTaskListCache);
+      if (!t) return println('not found', 'error');
+      t.done = false; t.doneAt = null; saveItems(items);
+      println('marked undone.', 'ok'); printTask(t);
+    };
+    cmd.delete = (args)=>{
+      const t = resolveTaskRef(args[0], lastTaskListCache);
+      if (!t) return println('not found', 'error');
+      notes.forEach(n=>{ if (n.taskId === t.id) n.taskId = null; });
+      items = items.filter(x=>x.id!==t.id); saveItems(items); saveNotes(notes);
+      println('deleted.', 'ok');
+    };
+    cmd.edit = (args)=>{
+      const ref = args.shift();
+      const t = resolveTaskRef(ref, lastTaskListCache);
+      if (!t) return println('not found', 'error');
+      const text = args.join(' ').trim();
+      if (!text) return println('usage: EDIT <id|#> <text>', 'error');
+      t.text = text; saveItems(items);
+      println('edited.', 'ok'); printTask(t);
+    };
+    cmd.move = (args)=>{
+      const ref = args[0]; const how = args[1];
+      const t = resolveTaskRef(ref, lastTaskListCache);
+      if (!t) return println('not found', 'error');
+      const idx = items.findIndex(x=>x.id===t.id);
+      if (how === 'up' && idx>0){
+        [items[idx-1], items[idx]] = [items[idx], items[idx-1]];
+      } else if (how === 'down' && idx < items.length-1){
+        [items[idx+1], items[idx]] = [items[idx], items[idx+1]];
+      } else if (/^\d+$/.test(how)){
+        let n = Math.max(0, Math.min(items.length-1, parseInt(how,10)-1));
+        items.splice(idx,1);
+        items.splice(n,0,t);
+      } else {
+        return println('usage: MOVE <id|#> <up|down|position#>', 'error');
+      }
+      saveItems(items);
+      println('moved.', 'ok');
+    };
+    cmd.tag = (args)=>{
+      const ref = args.shift();
+      const t = resolveTaskRef(ref, lastTaskListCache);
+      if (!t) return println('not found', 'error');
+      t.tags = t.tags || [];
+      for (const tok of args){
+        if (tok.startsWith('+')){
+          const tag = tok.slice(1);
+          if (!t.tags.includes(tag)) t.tags.push(tag);
+        } else if (tok.startsWith('-')){
+          const tag = tok.slice(1);
+          t.tags = t.tags.filter(x=>x!==tag);
+        }
+      }
+      saveItems(items);
+      println('tags updated.', 'ok'); printTask(t);
+    };
+    cmd.due = (args)=>{
+      const ref = args.shift();
+      const t = resolveTaskRef(ref, lastTaskListCache);
+      if (!t) return println('not found', 'error');
+      const val = (args[0]||'').toLowerCase();
+      if (!val) return println('usage: DUE <id|#> <YYYY-MM-DD|clear>', 'error');
+      if (val==='clear'){ t.due = null; }
+      else { t.due = val; }
+      saveItems(items);
+      println('due updated.', 'ok'); printTask(t);
+    };
+    cmd.priority = (args)=>{
+      const ref = args.shift();
+      const t = resolveTaskRef(ref, lastTaskListCache);
+      if (!t) return println('not found', 'error');
+      const p = (args[0]||'').toUpperCase();
+      if (!['H','M','L'].includes(p)) return println('usage: PRIORITY <id|#> <H|M|L>', 'error');
+      t.pri = p; saveItems(items);
+      println('priority updated.', 'ok'); printTask(t);
+    };
+    cmd.search = (args)=>{
+      const q = args.join(' ').toLowerCase();
+      if (!q) return println('usage: SEARCH <query>', 'error');
+      const hits = items.filter(t=> (t.text||'').toLowerCase().includes(q));
+      printList(hits, 'SEARCH TASKS: ' + q);
+    };
+
+    // Notes
+    let lastNoteListCache = null;
+    cmd.note = (args)=>{
+      const text = args.join(' ').trim();
+      if (!text) return println('usage: NOTE <text>', 'error');
+      const n = { id: makeId(), text, tags:[], taskId: null, createdAt: Date.now(), updatedAt: Date.now() };
+      notes.push(n); saveNotes(notes);
+      println('note added.', 'ok'); printNote(n);
+    };
+    cmd.notes = (args)=>{
+      const filter = args[0] || 'all';
+      lastNoteListCache = listFilteredNotes(filter);
+      printNotes(lastNoteListCache, 'NOTES ' + filter.toUpperCase());
+    };
+    cmd.nedit = (args)=>{
+      const ref = args.shift();
+      const n = resolveNoteRef(ref, lastNoteListCache);
+      if (!n) return println('not found', 'error');
+      const text = args.join(' ').trim();
+      if (!text) return println('usage: NEDIT <id|#> <text>', 'error');
+      n.text = text; n.updatedAt = Date.now(); saveNotes(notes);
+      println('note edited.', 'ok'); printNote(n);
+    };
+    cmd.ndelete = (args)=>{
+      const ref = args[0];
+      const n = resolveNoteRef(ref, lastNoteListCache);
+      if (!n) return println('not found', 'error');
+      notes = notes.filter(x=>x.id!==n.id); saveNotes(notes);
+      println('note deleted.', 'ok');
+    };
+    cmd.nlink = (args)=>{
+      const noteRef = args[0];
+      const taskRef = args[1];
+      if (!noteRef || !taskRef) return println('usage: NLINK <note|#> <task|#>', 'error');
+      const n = resolveNoteRef(noteRef, lastNoteListCache);
+      const t = resolveTaskRef(taskRef, lastTaskListCache);
+      if (!n || !t) return println('not found', 'error');
+      n.taskId = t.id; n.updatedAt = Date.now(); saveNotes(notes);
+      println('note linked.', 'ok'); printNote(n);
+    };
+    cmd.nunlink = (args)=>{
+      const noteRef = args[0];
+      const n = resolveNoteRef(noteRef, lastNoteListCache);
+      if (!n) return println('not found', 'error');
+      n.taskId = null; n.updatedAt = Date.now(); saveNotes(notes);
+      println('note unlinked.', 'ok'); printNote(n);
+    };
+    cmd.nsearch = (args)=>{
+      const q = args.join(' ').toLowerCase();
+      if (!q) return println('usage: NSEARCH <query>', 'error');
+      const hits = notes.filter(n=> (n.text||'').toLowerCase().includes(q));
+      printNotes(hits, 'SEARCH NOTES: ' + q);
+    };
+
+    // General
+    cmd.stats = ()=>{
+      const total = items.length;
+      const done = items.filter(t=>t.done).length;
+      const open = total - done;
+      const noteCount = notes.length;
+      println(`Tasks — Total: ${total}  Open: ${open}  Done: ${done}`);
+      println(`Notes — Total: ${noteCount}`);
+    };
+    function download(filename, text) {
+      const a = document.createElement('a');
+      a.setAttribute('href', 'data:application/json;charset=utf-8,' + encodeURIComponent(text));
+      a.setAttribute('download', filename);
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    }
+    cmd.export = ()=>{
+      const payload = { version: 2, items, notes };
+      const json = JSON.stringify(payload, null, 2);
+      download('terminal-list-export.json', json);
+      println('exported.', 'ok');
+    };
+    cmd.import = async ()=>{
+      println('Paste JSON and press Enter. Type CANCEL to abort.', 'muted');
+      const text = await getNextLine();
+      if (text.trim().toLowerCase() === 'cancel'){ println('import canceled.','muted'); return; }
+      try{
+        const incoming = JSON.parse(text);
+        if (Array.isArray(incoming)){
+          items = incoming;
+        } else if (incoming && Array.isArray(incoming.items) && Array.isArray(incoming.notes)){
+          items = incoming.items;
+          notes = incoming.notes;
+        } else {
+          throw new Error('invalid format');
+        }
+        saveItems(items); saveNotes(notes);
+        println('imported.', 'ok');
+      }catch(e){
+        println('import failed: ' + e.message, 'error');
+      }
+    };
+    cmd.wipe = ()=> openModal();
+
+    /************
+     * COMMAND LOOP
+     ************/
+    function parseAndRun(raw){
+      const line = raw.trim();
+      if (!line) return;
+      println('> ' + line);
+      const parts = line.split(/\s+/);
+      const name = parts.shift().toLowerCase();
+      const args = parts;
+      const fn = cmd[name];
+      if (!fn){ println('unknown command. type HELP.', 'error'); return; }
+      Promise.resolve(fn(args)).catch(err=>println('error: '+err.message,'error'));
+    }
+    function getNextLine(){
+      return new Promise(resolve => {
+        function handler(e){
+          if (e.key === 'Enter'){
+            const val = command.value;
+            println('> ' + val);
+            command.value = '';
+            command.removeEventListener('keydown', handler);
+            resolve(val);
+          }
+        }
+        command.addEventListener('keydown', handler);
+      });
+    }
+    command.addEventListener('keydown', (e)=>{
+      if (e.key === 'Enter'){
+        const v = command.value;
+        command.value='';
+        parseAndRun(v);
+      }
+    });
+
+    /************
+     * MODAL
+     ************/
+    function openModal(){ modal.style.display='flex'; }
+    function closeModal(){ modal.style.display='none'; }
+    btnCancel.addEventListener('click', closeModal);
+    btnOK.addEventListener('click', ()=>{
+      items = []; notes = [];
+      saveItems(items); saveNotes(notes);
+      closeModal();
+      println('All data wiped.','ok');
+    });
+
+    /************
+     * PWA SETUP + INSTALL BUTTON
+     ************/
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("service-worker.js").catch(console.error);
+    }
+    const installBtn = document.getElementById('installBtn');
+    const installHelp = document.getElementById('install-help');
+    const installClose = document.getElementById('install-close');
+    let deferredPrompt = null;
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      installBtn.classList.add('enabled');
+      console.log('beforeinstallprompt captured');
+    });
+
+    installBtn.addEventListener('click', async () => {
+      if (deferredPrompt) {
+        installBtn.disabled = true;
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        deferredPrompt = null;
+        installBtn.disabled = false;
+        installBtn.classList.remove('enabled');
+        console.log('PWA install:', outcome);
+      } else {
+        // Show quick help if prompt isn't available
+        installHelp.style.display = 'flex';
+      }
+    });
+    document.getElementById('install-close').addEventListener('click', () => {
+      installHelp.style.display = 'none';
+    });
+
+    // Basic diagnostics to console
+    (async function diag(){
+      try {
+        const resp = await fetch('manifest.json', {cache:'no-store'});
+        console.log('manifest status', resp.status);
+      } catch(e){ console.log('manifest fetch error', e); }
+      console.log('display-mode', window.matchMedia('(display-mode: standalone)').matches ? 'standalone' : 'browser');
+      console.log('platform userAgent', navigator.userAgent);
+    })();
+
+    /************
+     * VIEWPORT PINNING
+     ************/
+    (function pinBottom(){
+      const vv = window.visualViewport;
+      if (!vv) return;
+      function reposition(){
+        const inputBar = document.getElementById('input-bar');
+        const obscured = Math.max(0, (window.innerHeight - (vv.height + vv.offsetTop)));
+        inputBar.style.transform = 'translateY(' + (-obscured) + 'px)';
+        const inputH = inputBar.getBoundingClientRect().height;
+        output.style.bottom = 'calc(' + inputH + 'px + env(safe-area-inset-bottom) + ' + obscured + 'px)';
+      }
+      vv.addEventListener('resize', reposition);
+      vv.addEventListener('scroll', reposition);
+      window.addEventListener('orientationchange', ()=>setTimeout(reposition, 50));
+      window.addEventListener('resize', reposition);
+      window.requestAnimationFrame(reposition);
+    })();
+
+    // Initial greeting
+    if (!localStorage.getItem('terminal-list-initialized-v3')){
+      println('Welcome to Terminal List.');
+      println('Type HELP for tasks & notes commands.');
+      localStorage.setItem('terminal-list-initialized-v3','1');
+    }
+
+    // Focus on output tap
+    output.addEventListener('pointerdown', ()=>command.focus());
+  </script>
+</body>
+</html>
