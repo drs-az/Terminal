@@ -698,13 +698,14 @@
       if (!n) return println('not found', 'error');
       const parts = args.join(' ').split('|').map(s=>s.trim());
       const [title, body, link, attach] = parts;
-      TerminalListFeatures.editNoteRich(n.id, {
+      const updated = TerminalListFeatures.editNoteRich(n.id, {
         title: title || n.title,
         body: body || n.body,
         links: link ? [link] : (n.links || []),
         attachments: attach ? attach.split(',').map(s=>s.trim()).filter(Boolean) : (n.attachments || [])
       });
-      println('note updated.', 'ok'); printNote(n);
+      if (!updated) return println('note not updated.', 'error');
+      println('note updated.', 'ok'); printNote(updated);
     };
     cmd.ndelete = (args)=>{
       const ref = args[0];
