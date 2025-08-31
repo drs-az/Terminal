@@ -180,5 +180,15 @@ collab.broadcast(); // sync current tasks/notes to other tabs with same session
 
 ## License
 
-This project is provided as-is, with no warranty.  
+This project is provided as-is, with no warranty.
 All data is stored locally in your browser and under your control.
+
+## Manual Testing
+
+To check image attachment support:
+
+1. Open the app in a desktop or mobile browser.
+2. Run `NOTE` to open the note modal and select one or more images.
+3. Verify thumbnails appear in the modal and can be removed before saving.
+4. Save the note and use `NOTES` or `READNOTE` to confirm images render.
+5. Delete the note to ensure the images are removed.

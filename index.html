@@ -115,6 +115,9 @@
       font-family: var(--font);
       padding:6px; box-sizing:border-box;
     }
+    #note-attachments-preview .thumb{ display:inline-block; position:relative; margin-right:6px; }
+    #note-attachments-preview img{ max-width:64px; max-height:64px; border:1px solid var(--border); }
+    #note-attachments-preview .remove{ position:absolute; top:0; right:0; background:var(--bg); color:var(--fg); border:0; cursor:pointer; }
   .cursor {
     display: inline-block;
     width: 10px;
@@ -175,6 +178,8 @@
       <input id="note-links" type="text" />
       <label for="note-attachments" class="line">Attachments</label>
       <input id="note-attachments" type="text" />
+      <input id="note-attachments-files" type="file" accept="image/*" multiple />
+      <div id="note-attachments-preview" class="line"></div>
       <label for="note-body" class="line">Body</label>
       <textarea id="note-body" rows="4"></textarea>
       <div class="row">
@@ -338,6 +343,50 @@
       state.notes = v;
       saveState(state);
     }
+    const IMAGE_DB = 'terminal-list-images';
+    let imageDbPromise = null;
+    function getImageDb(){
+      if (!imageDbPromise){
+        imageDbPromise = new Promise((resolve)=>{
+          const req = indexedDB.open(IMAGE_DB,1);
+          req.onupgradeneeded = ()=>{ req.result.createObjectStore('files'); };
+          req.onsuccess = ()=>resolve(req.result);
+          req.onerror = ()=>resolve(null);
+        });
+      }
+      return imageDbPromise;
+    }
+    async function storeImageBlob(file){
+      const db = await getImageDb();
+      if (!db) return null;
+      return new Promise((resolve)=>{
+        const id = makeId() + Date.now();
+        const tx = db.transaction('files','readwrite');
+        tx.objectStore('files').put(file, id);
+        tx.oncomplete = ()=>resolve(id);
+        tx.onerror = ()=>resolve(null);
+      });
+    }
+    async function loadImageBlob(id){
+      const db = await getImageDb();
+      if (!db) return null;
+      return new Promise((resolve)=>{
+        const tx = db.transaction('files','readonly');
+        const req = tx.objectStore('files').get(id);
+        req.onsuccess = ()=>resolve(req.result);
+        req.onerror = ()=>resolve(null);
+      });
+    }
+    function isImageAttachment(a){
+      return a && (a.startsWith('data:image') || a.startsWith('idb:'));
+    }
+    async function resolveAttachmentUrl(a){
+      if (a.startsWith('idb:')){
+        const blob = await loadImageBlob(a.slice(4));
+        return blob ? URL.createObjectURL(blob) : '';
+      }
+      return a;
+    }
     const THEME_KEY = 'terminal-theme';
     function applyTheme(t){
       const root = document.documentElement.style;
@@ -375,10 +424,41 @@
     const noteDescriptionInput = document.getElementById('note-description');
     const noteLinksInput = document.getElementById('note-links');
     const noteAttachmentsInput = document.getElementById('note-attachments');
+    const noteAttachmentsFiles = document.getElementById('note-attachments-files');
+    const noteAttachmentsPreview = document.getElementById('note-attachments-preview');
+    let pendingAttachmentFiles = [];
     const noteBodyInput = document.getElementById('note-body');
     const noteCancel = document.getElementById('note-cancel');
     const noteSave = document.getElementById('note-save');
     let editingNote = null;
+
+    noteAttachmentsFiles.addEventListener('change', () => {
+      Array.from(noteAttachmentsFiles.files).forEach(file => {
+        if (!file.type.startsWith('image/')) return;
+        const entry = { file, dataUrl: '' };
+        pendingAttachmentFiles.push(entry);
+        const reader = new FileReader();
+        reader.onload = e => {
+          entry.dataUrl = e.target.result;
+          const wrap = document.createElement('div');
+          wrap.className = 'thumb';
+          const img = document.createElement('img');
+          img.src = entry.dataUrl;
+          wrap.appendChild(img);
+          const btn = document.createElement('button');
+          btn.textContent = '\u00d7';
+          btn.className = 'remove';
+          btn.addEventListener('click', () => {
+            pendingAttachmentFiles = pendingAttachmentFiles.filter(x => x !== entry);
+            wrap.remove();
+          });
+          wrap.appendChild(btn);
+          noteAttachmentsPreview.appendChild(wrap);
+        };
+        reader.readAsDataURL(file);
+      });
+      noteAttachmentsFiles.value = '';
+    });
 
     function println(text, cls){
       const div = document.createElement('div');
@@ -419,6 +499,28 @@
       div.className = 'line';
       div.textContent = line;
       output.appendChild(div);
+      if (n.attachments && n.attachments.length){
+        const adiv = document.createElement('div');
+        adiv.className = 'line';
+        n.attachments.forEach(att=>{
+          if (isImageAttachment(att)){
+            const img = document.createElement('img');
+            img.style.maxWidth = '64px';
+            img.style.maxHeight = '64px';
+            img.style.marginRight = '6px';
+            resolveAttachmentUrl(att).then(url=>{ if (url) img.src = url; });
+            adiv.appendChild(img);
+          } else {
+            const a = document.createElement('a');
+            a.href = att;
+            a.textContent = att;
+            a.target = '_blank';
+            a.style.marginRight = '6px';
+            adiv.appendChild(a);
+          }
+        });
+        output.appendChild(adiv);
+      }
     }
     function printNotes(arr, title){
       if (title) println(title, 'muted');
@@ -769,8 +871,31 @@
       const links = (n.links || []).join(', ');
       println('Links: ' + (links || ''));
       println('Body: ' + (n.body || n.text || ''));
-      const atts = (n.attachments || []).join(', ');
-      println('Attachments: ' + (atts || ''));
+      if (n.attachments && n.attachments.length){
+        const adiv = document.createElement('div');
+        adiv.className = 'line';
+        adiv.appendChild(document.createTextNode('Attachments: '));
+        n.attachments.forEach(att=>{
+          if (isImageAttachment(att)){
+            const img = document.createElement('img');
+            img.style.maxWidth = '100px';
+            img.style.maxHeight = '100px';
+            img.style.marginRight = '6px';
+            resolveAttachmentUrl(att).then(url=>{ if (url) img.src = url; });
+            adiv.appendChild(img);
+          } else {
+            const a = document.createElement('a');
+            a.href = att;
+            a.textContent = att;
+            a.target = '_blank';
+            a.style.marginRight = '6px';
+            adiv.appendChild(a);
+          }
+        });
+        output.appendChild(adiv);
+      } else {
+        println('Attachments: ');
+      }
       const tags = (n.tags||[]).map(t=>'@'+t).join(' ');
       println('Tags: ' + tags);
       println('Linked Task: ' + (n.taskId || ''));
@@ -1053,7 +1178,10 @@
       noteTitleInput.value = note ? note.title || '' : '';
       noteDescriptionInput.value = note ? note.description || '' : '';
       noteLinksInput.value = note ? (note.links || []).join(', ') : '';
-      noteAttachmentsInput.value = note ? (note.attachments || []).join(', ') : '';
+      noteAttachmentsInput.value = note ? (note.attachments || []).filter(a=>!a.startsWith('idb:')).join(', ') : '';
+      noteAttachmentsPreview.innerHTML = '';
+      noteAttachmentsFiles.value = '';
+      pendingAttachmentFiles = [];
       noteBodyInput.value = note ? note.body || '' : '';
       noteModal.style.display = 'flex';
       noteTitleInput.focus();
@@ -1061,9 +1189,12 @@
     function hideNoteModal(){
       noteModal.style.display = 'none';
       editingNote = null;
+      noteAttachmentsPreview.innerHTML = '';
+      noteAttachmentsFiles.value = '';
+      pendingAttachmentFiles = [];
     }
     noteCancel.addEventListener('click', hideNoteModal);
-    noteSave.addEventListener('click', ()=>{
+    noteSave.addEventListener('click', async ()=>{
       const title = noteTitleInput.value.trim();
       const description = noteDescriptionInput.value.trim();
       if (!title || !description){
@@ -1071,7 +1202,16 @@
         return;
       }
       const links = noteLinksInput.value.split(',').map(s=>s.trim()).filter(Boolean);
-      const attachments = noteAttachmentsInput.value.split(',').map(s=>s.trim()).filter(Boolean);
+      let attachments = noteAttachmentsInput.value.split(',').map(s=>s.trim()).filter(Boolean);
+      if (editingNote){
+        const existing = (editingNote.attachments || []).filter(a=>a.startsWith('idb:'));
+        attachments = existing.concat(attachments);
+      }
+      for (const entry of pendingAttachmentFiles){
+        let ref = await storeImageBlob(entry.file);
+        if (ref) attachments.push('idb:'+ref);
+        else if (entry.dataUrl) attachments.push(entry.dataUrl);
+      }
       const body = noteBodyInput.value.trim();
       if (editingNote){
         editingNote.title = title;
