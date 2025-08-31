@@ -53,20 +53,26 @@ function snoozeReminder(taskId, until) {
 function parseAdvancedQuery(query) {
   if (!query) return [];
   const tokens = query.trim().split(/\s+/);
-  const filters = { tags: [], text: [], due: null, done: null };
+  const filters = { tags: [], text: [], due: null, done: null, pri: null };
   tokens.forEach(tok => {
     if (tok.startsWith('tag:')) filters.tags.push(tok.slice(4));
     else if (tok.startsWith('due:')) filters.due = tok.slice(4);
     else if (tok.startsWith('done:')) filters.done = tok.slice(5) === 'true';
+    else if (tok.startsWith('pri:')) filters.pri = tok.slice(4).toUpperCase();
     else filters.text.push(tok.toLowerCase());
   });
   const today = new Date().toISOString().slice(0, 10);
   return (window.items || []).filter(t => {
     if (filters.tags.length && !filters.tags.every(tag => (t.tags || []).includes(tag))) return false;
     if (filters.due) {
-      const due = filters.due === 'today' ? today : filters.due;
-      if (t.due !== due) return false;
+      if (filters.due === 'overdue') {
+        if (!t.due || t.due >= today) return false;
+      } else {
+        const due = filters.due === 'today' ? today : filters.due;
+        if (t.due !== due) return false;
+      }
     }
+    if (filters.pri && (t.pri || '').toUpperCase() !== filters.pri) return false;
     if (filters.done !== null && t.done !== filters.done) return false;
     if (filters.text.length && !filters.text.every(q => t.text.toLowerCase().includes(q))) return false;
     return true;

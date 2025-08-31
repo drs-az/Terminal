@@ -14,7 +14,7 @@ It supports optional passcode protection with AES-256 encryption, JSON export/im
 - 🚨 **Emergency Wipe**: One command securely wipes all local data.
 - 📱 **PWA Support**: Installable, offline-capable, works across desktop and mobile.
 - 🔁 **Recurring & Snoozeable Reminders**: Automatically reschedule tasks or snooze them to a later date.
-- 🔎 **Advanced Queries**: Filter tasks by tag, due date, or completion state.
+- 🔎 **Advanced Queries**: Filter tasks by tag, due date (including overdue), completion state, or priority.
 - ✨ **Rich Note Editing**: Add attachments, links, or formatted text to notes.
 - ☁️ **Local "Cloud" Backup**: Upload or download data to a localStorage sandbox.
 - 🎭 **Theme Presets**: Apply or export theme JSON files for easy sharing.
@@ -108,7 +108,7 @@ Type commands into the input bar or directly in the terminal view.
 
 - `recur <id|#> <n> <unit>` — schedule recurring reminder (`unit` = minute|hour|day|week)
 - `snooze <id|#> <YYYY-MM-DD>` — snooze a task to a new date
-- `aquery <query>` — run an advanced task query (tag/due/done filters)
+- `aquery <query>` — run an advanced task query (tag/due/done/pri filters; `due:overdue` for past-due tasks)
 - `nrich <id|#> <title>|[body]|[link]` — edit note with rich fields
 - `backup [provider] [upload|download]` — sync data to a sandbox provider
 - `themepreset <json>` — apply a theme preset from JSON
@@ -128,7 +128,7 @@ TerminalListFeatures.snoozeReminder(taskId, '2024-05-20');
 ### Advanced Queries
 ```js
 // returns matching task IDs
-TerminalListFeatures.parseAdvancedQuery('tag:work due:today done:false');
+TerminalListFeatures.parseAdvancedQuery('tag:work pri:H due:overdue done:false');
 ```
 
 ### Rich Note Editing
