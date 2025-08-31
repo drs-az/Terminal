@@ -632,6 +632,7 @@
       locked = true;
       lastTaskListCache = null; lastNoteListCache = null;
       println('locked.', 'ok');
+      setTimeout(() => location.reload(), 0);
     };
 
     cmd.unlock = async ()=>{
