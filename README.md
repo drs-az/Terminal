@@ -148,6 +148,11 @@ await TerminalListFeatures.syncWithCloud('local', 'download'); // restore from s
 // Google Drive (requires API key & client ID in features.js)
 await TerminalListFeatures.syncWithCloud('gdrive', 'upload');
 await TerminalListFeatures.syncWithCloud('gdrive', 'download');
+=======
+### Local "Cloud" Backup
+```js
+await TerminalListFeatures.syncWithCloud('local', 'upload');   // save to localStorage sandbox
+await TerminalListFeatures.syncWithCloud('local', 'download'); // restore from sandbox
 ```
 
 ### Theme Presets

@@ -183,6 +183,7 @@ function syncWithCloud(provider = 'local', mode = 'upload') {
   if (provider === 'gdrive') {
     return mode === 'upload' ? gdriveUpload() : gdriveDownload();
   }
+
   const key = `terminal-list-sync-${provider}`;
   if (mode === 'upload') {
     const data = JSON.stringify({ items: window.items || [], notes: window.notes || [] });
