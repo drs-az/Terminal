@@ -10,7 +10,7 @@ It supports optional passcode protection with AES-256 encryption, JSON export/im
 - 🔐 **Passcode Lock**: Protect your data with AES-256-GCM encryption (derived with PBKDF2).
 - ⏰ **Due-date Notifications**: Receive reminders for tasks on their due date (requires notification permission).
 - 🎨 **Custom Themes**: Adjust terminal colors with the `THEME` command.
-- 📤 **Export/Import**: Backup or restore tasks and notes in JSON format.
+- 📤 **Export/Import**: Backup or restore tasks, notes, and messages in JSON format.
 - 🚨 **Emergency Wipe**: One command securely wipes all local data.
 - 📱 **PWA Support**: Installable, offline-capable, works across desktop and mobile.
 - 🔁 **Recurring & Snoozeable Reminders**: Automatically reschedule tasks or snooze them to a later date.
@@ -19,6 +19,8 @@ It supports optional passcode protection with AES-256 encryption, JSON export/im
 - ☁️ **Cloud Backup**: Upload or download data to a localStorage sandbox or Google Drive.
 - 🎭 **Theme Presets**: Apply or export theme JSON files for easy sharing.
 - 🤝 **Collaboration Channel**: Share task and note data with other tabs via BroadcastChannel.
+- ✉️ **Messages**: Compose, share, and receive encrypted messages.
+- 📎 **Encrypted Sharing**: Share individual tasks, notes, or messages with a passcode-protected payload.
 
 ## Project Structure
 
@@ -79,6 +81,7 @@ Type commands into the input bar or directly in the terminal view.
 - `due <id|#> <YYYY-MM-DD>` — set due date (notifications fire on the due date; or "clear")
 - `priority <id|#> <H|M|L>` — set priority
 - `search <query>` — find text in items
+- `share <id|#>` — share a task encrypted with a passcode
 
 ### Notes
 - `note <title>|<desc>|[link]|[body]` — add a note
@@ -92,12 +95,21 @@ Type commands into the input bar or directly in the terminal view.
 - `nunlink <note|#>` — unlink note from task
 - `ntag <id|#> +foo -bar` — add/remove tags
 - `nsearch <query>` — find text in notes
+- `nshare <id|#>` — share a note encrypted with a passcode
+
+### Messages
+- `msgs` — list messages
+- `sendmsg` — compose and share an encrypted message
+- `recmsg` — paste shared message JSON and decrypt with a passcode
+- `replymsg <id|#>` — reply to a message
+- `delmsg <id|#>` — delete a message
 
 ### Security & Data
 - `stats` — summary counts
 - `clear` — clear the display
-- `export` — download JSON (tasks + notes)
+- `export` — download JSON (tasks + notes + messages)
 - `import` — paste JSON to replace all data
+- `importshare` — paste shared item JSON and decrypt with a passcode
 - `wipe` — clear all data (with confirm)
 - `setpass` — set or clear passcode
 - `lock` — clear decrypted data from memory

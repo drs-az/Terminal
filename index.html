@@ -86,7 +86,7 @@
     .ok{ color: #7fffd4; }
     .task-done{ opacity: 0.7; text-decoration: line-through; }
     /* Modal + Install Help */
-    #modal, #install-help, #note-modal, #pic-modal{
+    #modal, #install-help, #note-modal, #pic-modal, #msg-modal{
       position: fixed; inset: 0; display: none;
       align-items: center; justify-content: center;
       background: rgba(0,0,0,0.92);
@@ -107,8 +107,8 @@
       cursor: pointer;
     }
     button.terminal:hover{ outline: 1px dashed var(--border); }
-    #note-modal label{ display:block; margin-top:6px; }
-    #note-modal input, #note-modal textarea{
+    #note-modal label, #msg-modal label{ display:block; margin-top:6px; }
+    #note-modal input, #note-modal textarea, #msg-modal input, #msg-modal textarea{
       width:100%;
       background: transparent; color: var(--fg);
       border:1px solid var(--border);
@@ -190,6 +190,30 @@
     </div>
   </div>
 
+  <div id="msg-modal" role="dialog" aria-modal="true" aria-labelledby="msg-modal-title">
+    <div class="card">
+      <div id="msg-modal-title" class="line">Send Message</div>
+      <label for="msg-from" class="line">From</label>
+      <input id="msg-from" type="text" />
+      <label for="msg-to" class="line">To</label>
+      <input id="msg-to" type="text" />
+      <label for="msg-subject" class="line">Subject</label>
+      <input id="msg-subject" type="text" />
+      <label for="msg-date" class="line">Date</label>
+      <input id="msg-date" type="text" readonly />
+      <label for="msg-time" class="line">Time</label>
+      <input id="msg-time" type="text" readonly />
+      <label for="msg-body" class="line">Message</label>
+      <textarea id="msg-body" rows="4"></textarea>
+      <label for="msg-pass" class="line">Passcode</label>
+      <input id="msg-pass" type="password" />
+      <div class="row">
+        <button class="terminal" id="msg-cancel">Cancel</button>
+        <button class="terminal" id="msg-share">Share</button>
+      </div>
+    </div>
+  </div>
+
   <div id="pic-modal" role="dialog" aria-modal="true" aria-labelledby="pic-modal-title">
     <div class="card">
       <div id="pic-modal-title" class="line">Image Preview</div>
@@ -227,7 +251,7 @@
     /************
      * STORAGE
      ************/
-    const STORE_KEY_V2 = 'terminal-list-state-v2'; // {items:[], notes:[]} or {version,enc:{}}
+    const STORE_KEY_V2 = 'terminal-list-state-v2'; // {items:[], notes:[], messages:[]} or {version,enc:{}}
     const STORE_KEY_V1 = 'terminal-list-items-v1'; // legacy items-only
 
     const enc = new TextEncoder();
@@ -245,6 +269,24 @@
       );
     }
 
+    async function encryptForShare(obj, pass){
+      const saltBytes = crypto.getRandomValues(new Uint8Array(16));
+      const iv = crypto.getRandomValues(new Uint8Array(12));
+      const key = await deriveKey(pass, saltBytes);
+      const data = enc.encode(JSON.stringify(obj));
+      const buf = await crypto.subtle.encrypt({ name:'AES-GCM', iv }, key, data);
+      return { salt: b64(saltBytes), iv: b64(iv), data: b64(buf) };
+    }
+
+    async function decryptShared(encObj, pass){
+      const saltBytes = b64ToBuf(encObj.salt);
+      const iv = b64ToBuf(encObj.iv);
+      const data = b64ToBuf(encObj.data);
+      const key = await deriveKey(pass, saltBytes);
+      const buf = await crypto.subtle.decrypt({ name:'AES-GCM', iv }, key, data);
+      return JSON.parse(dec.decode(new Uint8Array(buf)));
+    }
+
     let passKey = null; // CryptoKey when unlocked
     let passSalt = null; // base64 string
     let locked = false;
@@ -258,10 +300,10 @@
             // encrypted payload present
             locked = true;
             passSalt = obj.enc.salt;
-            return { items: [], notes: [] };
+            return { items: [], notes: [], messages: [] };
           }
           if (obj && Array.isArray(obj.items) && Array.isArray(obj.notes)){
-            return obj;
+            return { items: obj.items, notes: obj.notes, messages: Array.isArray(obj.messages) ? obj.messages : [] };
           }
         }
       }catch{}
@@ -269,23 +311,23 @@
         const raw1 = localStorage.getItem(STORE_KEY_V1);
         if (raw1){
           const items = JSON.parse(raw1) || [];
-          const state = { items, notes: [] };
+          const state = { items, notes: [], messages: [] };
           saveState(state);
           return state;
         }
       }catch{}
-      return { items: [], notes: [] };
+      return { items: [], notes: [], messages: [] };
     }
     async function saveState(state){
       try{
         if (passKey){
           const iv = crypto.getRandomValues(new Uint8Array(12));
-          const data = enc.encode(JSON.stringify({ items: state.items, notes: state.notes }));
+          const data = enc.encode(JSON.stringify({ items: state.items, notes: state.notes, messages: state.messages }));
           const buf = await crypto.subtle.encrypt({ name:'AES-GCM', iv }, passKey, data);
-          const payload = { version: 3, enc: { v:1, salt: passSalt, iv: b64(iv), data: b64(buf) } };
+          const payload = { version: 4, enc: { v:1, salt: passSalt, iv: b64(iv), data: b64(buf) } };
           localStorage.setItem(STORE_KEY_V2, JSON.stringify(payload));
         } else {
-          localStorage.setItem(STORE_KEY_V2, JSON.stringify({ items: state.items, notes: state.notes }));
+          localStorage.setItem(STORE_KEY_V2, JSON.stringify({ items: state.items, notes: state.notes, messages: state.messages }));
         }
       }catch(err){ console.error(err); }
     }
@@ -313,6 +355,9 @@
     // expose notes array for feature helpers
     window.notes = notes;
     if (needsNoteMigration) saveNotes(notes);
+    let messages = state.messages || [];
+    state.messages = messages;
+    window.messages = messages;
 
     // Service Worker registration and notification timers
     let swRegistration = null;
@@ -354,6 +399,12 @@
       notes = v;
       window.notes = v;
       state.notes = v;
+      saveState(state);
+    }
+    function saveMessages(v){
+      messages = v;
+      window.messages = v;
+      state.messages = v;
       saveState(state);
     }
     const IMAGE_DB = 'terminal-list-images';
@@ -444,6 +495,18 @@
     const noteCancel = document.getElementById('note-cancel');
     const noteSave = document.getElementById('note-save');
     let editingNote = null;
+    const msgModal = document.getElementById('msg-modal');
+    const msgModalTitle = document.getElementById('msg-modal-title');
+    const msgFromInput = document.getElementById('msg-from');
+    const msgToInput = document.getElementById('msg-to');
+    const msgSubjectInput = document.getElementById('msg-subject');
+    const msgDateInput = document.getElementById('msg-date');
+    const msgTimeInput = document.getElementById('msg-time');
+    const msgBodyInput = document.getElementById('msg-body');
+    const msgPassInput = document.getElementById('msg-pass');
+    const msgCancel = document.getElementById('msg-cancel');
+    const msgShare = document.getElementById('msg-share');
+    let replyingMessage = null;
     const picModal = document.getElementById('pic-modal');
     const picModalImg = document.getElementById('pic-modal-img');
     const picClose = document.getElementById('pic-close');
@@ -583,6 +646,21 @@
       output.scrollTop = output.scrollHeight;
     }
 
+    function printMessage(m, indexShown){
+      const idx = typeof indexShown === 'number' ? '['+indexShown+'] ' : '';
+      const line = `${idx}(${m.id}) ${m.from} -> ${m.to} : ${m.subject || ''} [${m.date} ${m.time}]`;
+      const div = document.createElement('div');
+      div.className = 'line';
+      div.textContent = line;
+      output.appendChild(div);
+    }
+    function printMessages(arr, title){
+      if (title) println(title, 'muted');
+      if (!arr.length){ println('— no messages —', 'muted'); return; }
+      arr.forEach((m,i)=>printMessage(m,i+1));
+      output.scrollTop = output.scrollHeight;
+    }
+
     /************
      * FILTER/RESOLUTION
      ************/
@@ -631,6 +709,9 @@
       }
       return arr;
     }
+    function listMessages(){
+      return [...messages].sort((a,b)=> new Date(b.date+' '+b.time) - new Date(a.date+' '+a.time));
+    }
     function resolveTaskRef(ref, currentList){
       if (!ref) return null;
       const byId = items.find(t=>t.id === ref);
@@ -647,6 +728,15 @@
       const n = parseInt(ref,10);
       if (!isNaN(n) && currentList && n>=1 && n<=currentList.length) return currentList[n-1];
       if (!isNaN(n) && n>=1 && n<=notes.length) return notes[n-1];
+      return null;
+    }
+    function resolveMessageRef(ref, currentList){
+      if (!ref) return null;
+      const byId = messages.find(m=>m.id === ref);
+      if (byId) return byId;
+      const n = parseInt(ref,10);
+      if (!isNaN(n) && currentList && n>=1 && n<=currentList.length) return currentList[n-1];
+      if (!isNaN(n) && n>=1 && n<=messages.length) return messages[n-1];
       return null;
     }
 
@@ -674,6 +764,7 @@
       println('  RECUR <id|#> <n> <unit>  schedule recurring reminder');
       println('  SNOOZE <id|#> <YYYY-MM-DD> snooze reminder');
       println('  AQUERY <query>            advanced task query (tag/due/done/pri)');
+      println('  SHARE <id|#>              share a task encrypted');
       println('Notes:');
       println('  NOTE <title>|<desc>|[link]|[body] add a note');
       println('  NOTES [all|@tag|task:<ref>] list notes');
@@ -687,11 +778,19 @@
       println('  SEEPIC <id|#>            view note image');
       println('  DLPIC <id|#>             download note image');
       println('  NSEARCH <query>           find text in notes');
+      println('  NSHARE <id|#>            share a note encrypted');
+      println('Messages:');
+      println('  MSGS                     list messages');
+      println('  SENDMSG                  compose and share a message');
+      println('  RECMSG                   receive a shared message');
+      println('  REPLYMSG <id|#>          reply to a message');
+      println('  DELMSG <id|#>           delete a message');
       println('Security & Data:');
       println('  STATS                     summary counts');
       println('  CLEAR                     clear the display');
-      println('  EXPORT                    download JSON (tasks + notes)');
+      println('  EXPORT                    download JSON (tasks + notes + messages)');
       println('  IMPORT                    paste JSON to replace all data');
+      println('  IMPORTSHARE              paste shared item JSON to import');
       println('  WIPE                      clear all data (with confirm)');
       println('  SETPASS                   set or clear passcode');
       println('  LOCK                      clear decrypted data from memory');
@@ -870,6 +969,23 @@
       printList(hits, 'ADV QUERY: ' + q);
     };
 
+    cmd.share = async (args)=>{
+      const ref = args[0];
+      const t = resolveTaskRef(ref, lastTaskListCache);
+      if (!t) return println('not found', 'error');
+      println('Enter share passcode:', 'muted');
+      const pass = await getNextLine(true);
+      const encPayload = await encryptForShare(t, pass);
+      const payload = { version:1, type:'item', enc: encPayload };
+      const json = JSON.stringify(payload);
+      if (navigator.share){
+        try { await navigator.share({ text: json }); println('shared.', 'ok'); }
+        catch(e){ println('share canceled.', 'muted'); }
+      } else {
+        println(json, 'muted');
+      }
+    };
+
     // Notes
     let lastNoteListCache = null;
     cmd.note = ()=>{
@@ -940,6 +1056,23 @@
       if (!q) return println('usage: NSEARCH <query>', 'error');
       const hits = notes.filter(n=> [n.title, n.description, ...(n.links||[]), n.body || n.text].some(f => (f||'').toLowerCase().includes(q)));
       printNotes(hits, 'SEARCH NOTES: ' + q);
+    };
+
+    cmd.nshare = async (args)=>{
+      const ref = args[0];
+      const n = resolveNoteRef(ref, lastNoteListCache);
+      if (!n) return println('not found', 'error');
+      println('Enter share passcode:', 'muted');
+      const pass = await getNextLine(true);
+      const encPayload = await encryptForShare(n, pass);
+      const payload = { version:1, type:'note', enc: encPayload };
+      const json = JSON.stringify(payload);
+      if (navigator.share){
+        try { await navigator.share({ text: json }); println('shared.', 'ok'); }
+        catch(e){ println('share canceled.', 'muted'); }
+      } else {
+        println(json, 'muted');
+      }
     };
 
     cmd.readnote = (args)=>{
@@ -1014,6 +1147,49 @@
       });
     };
 
+    let lastMsgListCache = null;
+    cmd.msgs = ()=>{
+      lastMsgListCache = listMessages();
+      printMessages(lastMsgListCache, 'MESSAGES');
+    };
+    cmd.sendmsg = ()=>{
+      showMessageModal();
+    };
+    cmd.recmsg = async ()=>{
+      println('Paste shared JSON and press Enter. Type CANCEL to abort.', 'muted');
+      const text = await getNextLine();
+      if (text.trim().toLowerCase() === 'cancel'){ println('import canceled.','muted'); return; }
+      try{
+        const payload = JSON.parse(text);
+        if (!payload || payload.type !== 'message' || !payload.enc) throw new Error('invalid format');
+        println('Enter share passcode:', 'muted');
+        const pass = await getNextLine(true);
+        const obj = await decryptShared(payload.enc, pass);
+        if (!obj.id) obj.id = makeId();
+        const idx = messages.findIndex(m=>m.id===obj.id);
+        if (idx>=0) messages[idx]=obj; else messages.push(obj);
+        messages.sort((a,b)=> new Date(b.date+' '+b.time) - new Date(a.date+' '+a.time));
+        saveMessages(messages);
+        println('message received.', 'ok');
+      }catch(e){
+        println('import failed: ' + e.message, 'error');
+      }
+    };
+    cmd.replymsg = (args)=>{
+      const ref = args[0];
+      const m = resolveMessageRef(ref, lastMsgListCache);
+      if (!m) return println('not found', 'error');
+      showMessageModal(m);
+    };
+    cmd.delmsg = (args)=>{
+      const ref = args[0];
+      const m = resolveMessageRef(ref, lastMsgListCache);
+      if (!m) return println('not found', 'error');
+      messages = messages.filter(x=>x.id!==m.id);
+      saveMessages(messages);
+      println('message deleted.', 'ok');
+    };
+
     // General
     cmd.syntax = (args)=>{
       const topic = (args[0] || '').toLowerCase();
@@ -1043,6 +1219,38 @@
         ntag: [
           'NTAG <id|#> +foo -bar',
           '  Add (+) or remove (-) tags from a note'
+        ],
+        share: [
+          'SHARE <id|#>',
+          '  Share a task encrypted with a passcode'
+        ],
+        nshare: [
+          'NSHARE <id|#>',
+          '  Share a note encrypted with a passcode'
+        ],
+        importshare: [
+          'IMPORTSHARE',
+          '  Paste shared item JSON, then enter its passcode'
+        ],
+        sendmsg: [
+          'SENDMSG',
+          '  Compose and share an encrypted message'
+        ],
+        recmsg: [
+          'RECMSG',
+          '  Paste shared message JSON, then enter its passcode'
+        ],
+        replymsg: [
+          'REPLYMSG <id|#>',
+          '  Reply to a message'
+        ],
+        delmsg: [
+          'DELMSG <id|#>',
+          '  Delete a message'
+        ],
+        msgs: [
+          'MSGS',
+          '  List messages in reverse chronological order'
         ]
       };
       if (!topic || !info[topic]) {
@@ -1056,14 +1264,17 @@
       output.innerHTML = '';
       lastTaskListCache = null;
       lastNoteListCache = null;
+      lastMsgListCache = null;
     };
     cmd.stats = ()=>{
       const total = items.length;
       const done = items.filter(t=>t.done).length;
       const open = total - done;
       const noteCount = notes.length;
+      const msgCount = messages.length;
       println(`Tasks — Total: ${total}  Open: ${open}  Done: ${done}`);
       println(`Notes — Total: ${noteCount}`);
+      println(`Messages — Total: ${msgCount}`);
     };
     cmd.theme = (args)=>{
       if (args.length !== 3){
@@ -1131,7 +1342,7 @@
       a.remove();
     }
     cmd.export = ()=>{
-      const payload = { version: 2, items, notes };
+      const payload = { version: 3, items, notes, messages };
       const json = JSON.stringify(payload, null, 2);
       download('terminal-list-export.json', json);
       println('exported.', 'ok');
@@ -1157,10 +1368,42 @@
             createdAt: n.createdAt,
             updatedAt: n.updatedAt,
           }));
+          messages = Array.isArray(incoming.messages) ? incoming.messages : [];
         } else {
           throw new Error('invalid format');
         }
-        saveItems(items); saveNotes(notes);
+        messages.sort((a,b)=> new Date(b.date+' '+b.time) - new Date(a.date+' '+a.time));
+        saveItems(items); saveNotes(notes); saveMessages(messages);
+        println('imported.', 'ok');
+      }catch(e){
+        println('import failed: ' + e.message, 'error');
+      }
+    };
+
+    cmd.importshare = async ()=>{
+      println('Paste shared JSON and press Enter. Type CANCEL to abort.', 'muted');
+      const text = await getNextLine();
+      if (text.trim().toLowerCase() === 'cancel'){ println('import canceled.','muted'); return; }
+      try{
+        const payload = JSON.parse(text);
+        if (!payload || !payload.enc || !payload.type) throw new Error('invalid format');
+        println('Enter share passcode:', 'muted');
+        const pass = await getNextLine(true);
+        const obj = await decryptShared(payload.enc, pass);
+        if (payload.type === 'item'){
+          if (!obj.id || items.some(t=>t.id===obj.id)) obj.id = makeId();
+          items.push(obj); saveItems(items);
+        } else if (payload.type === 'note'){
+          if (!obj.id || notes.some(n=>n.id===obj.id)) obj.id = makeId();
+          notes.push(obj); saveNotes(notes);
+        } else if (payload.type === 'message'){
+          if (!obj.id || messages.some(m=>m.id===obj.id)) obj.id = makeId();
+          messages.push(obj);
+          messages.sort((a,b)=> new Date(b.date+' '+b.time) - new Date(a.date+' '+a.time));
+          saveMessages(messages);
+        } else {
+          throw new Error('unknown type');
+        }
         println('imported.', 'ok');
       }catch(e){
         println('import failed: ' + e.message, 'error');
@@ -1291,8 +1534,8 @@
     function closeModal(){ modal.style.display='none'; }
     btnCancel.addEventListener('click', closeModal);
     btnOK.addEventListener('click', ()=>{
-      items = []; notes = [];
-      saveItems(items); saveNotes(notes);
+      items = []; notes = []; messages = [];
+      saveItems(items); saveNotes(notes); saveMessages(messages);
       closeModal();
       println('All data wiped.','ok');
     });
@@ -1318,6 +1561,53 @@
       noteAttachmentsFiles.value = '';
       pendingAttachmentFiles = [];
     }
+    function showMessageModal(prefill){
+      replyingMessage = prefill || null;
+      msgModalTitle.textContent = prefill ? 'Reply Message' : 'Send Message';
+      msgFromInput.value = prefill ? (prefill.to || '') : '';
+      msgToInput.value = prefill ? (prefill.from || '') : '';
+      msgSubjectInput.value = prefill ? (prefill.subject || '') : '';
+      const now = new Date();
+      msgDateInput.value = now.toISOString().slice(0,10);
+      msgTimeInput.value = now.toTimeString().slice(0,5);
+      msgBodyInput.value = prefill ? (prefill.message || '') : '';
+      msgPassInput.value = '';
+      msgModal.style.display = 'flex';
+      msgFromInput.focus();
+    }
+    function hideMessageModal(){
+      msgModal.style.display = 'none';
+      replyingMessage = null;
+    }
+    msgCancel.addEventListener('click', hideMessageModal);
+    msgShare.addEventListener('click', async ()=>{
+      const from = msgFromInput.value.trim();
+      const to = msgToInput.value.trim();
+      const subject = msgSubjectInput.value.trim();
+      const date = msgDateInput.value;
+      const time = msgTimeInput.value;
+      const body = msgBodyInput.value.trim();
+      const pass = msgPassInput.value.trim();
+      if (!from || !to || !pass){
+        println('from, to, and passcode required','error');
+        return;
+      }
+      const m = { id: makeId(), from, to, subject, date, time, message: body, passcode: pass };
+      const idx = messages.findIndex(x=>x.id===m.id);
+      if (idx>=0) messages[idx]=m; else messages.push(m);
+      messages.sort((a,b)=> new Date(b.date+' '+b.time) - new Date(a.date+' '+a.time));
+      saveMessages(messages);
+      hideMessageModal();
+      const encPayload = await encryptForShare(m, pass);
+      const payload = { version:1, type:'message', enc: encPayload };
+      const json = JSON.stringify(payload);
+      if (navigator.share){
+        try { await navigator.share({ text: json }); println('shared.','ok'); }
+        catch(e){ println('share canceled.','muted'); }
+      } else {
+        println(json, 'muted');
+      }
+    });
     function showPicModal(url){
       currentPicUrl = url;
       picModalImg.src = url;
@@ -1455,7 +1745,7 @@
     // Initial greeting
     if (!localStorage.getItem('terminal-list-initialized-v4')){
       println('Welcome to Terminal List.');
-      println('Type HELP for tasks & notes commands.');
+      println('Type HELP for tasks, notes, and messages commands.');
       localStorage.setItem('terminal-list-initialized-v4','1');
     }
     if (locked) println('Data is locked. Type UNLOCK to access.', 'muted');

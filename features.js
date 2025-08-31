@@ -139,7 +139,7 @@ function ensureGDriveAuth() {
 
 function gdriveUpload() {
   const fileName = 'terminal-list-backup.json';
-  const data = JSON.stringify({ items: window.items || [], notes: window.notes || [] });
+  const data = JSON.stringify({ items: window.items || [], notes: window.notes || [], messages: window.messages || [] });
   return ensureGDriveAuth()
     .then(() => gapi.client.drive.files.list({
       q: `name='${fileName}' and trashed=false`,
@@ -185,8 +185,10 @@ function gdriveDownload() {
       const data = typeof res.body === 'string' ? JSON.parse(res.body) : res.result;
       window.items = data.items || [];
       window.notes = data.notes || [];
+      window.messages = data.messages || [];
       if (typeof saveItems === 'function') saveItems(window.items);
       if (typeof saveNotes === 'function') saveNotes(window.notes);
+      if (typeof saveMessages === 'function') saveMessages(window.messages);
       if (typeof rescheduleAllNotifications === 'function') rescheduleAllNotifications();
       return 'downloaded';
     });
@@ -199,7 +201,7 @@ function syncWithCloud(provider = 'local', mode = 'upload') {
 
   const key = `terminal-list-sync-${provider}`;
   if (mode === 'upload') {
-    const data = JSON.stringify({ items: window.items || [], notes: window.notes || [] });
+    const data = JSON.stringify({ items: window.items || [], notes: window.notes || [], messages: window.messages || [] });
     localStorage.setItem(key, data);
     return Promise.resolve('uploaded');
   } else {
@@ -208,8 +210,10 @@ function syncWithCloud(provider = 'local', mode = 'upload') {
     const data = JSON.parse(raw);
     window.items = data.items || [];
     window.notes = data.notes || [];
+    window.messages = data.messages || [];
     if (typeof saveItems === 'function') saveItems(window.items);
     if (typeof saveNotes === 'function') saveNotes(window.notes);
+    if (typeof saveMessages === 'function') saveMessages(window.messages);
     if (typeof rescheduleAllNotifications === 'function') rescheduleAllNotifications();
     return Promise.resolve('downloaded');
   }
@@ -249,13 +253,15 @@ function startCollaboration(sessionId) {
     if (e.data && e.data.items && e.data.notes) {
       window.items = e.data.items;
       window.notes = e.data.notes;
+      window.messages = e.data.messages || [];
       if (typeof saveItems === 'function') saveItems(window.items);
       if (typeof saveNotes === 'function') saveNotes(window.notes);
+      if (typeof saveMessages === 'function') saveMessages(window.messages);
       if (typeof rescheduleAllNotifications === 'function') rescheduleAllNotifications();
     }
   };
   function broadcast() {
-    channel.postMessage({ items: window.items || [], notes: window.notes || [] });
+    channel.postMessage({ items: window.items || [], notes: window.notes || [], messages: window.messages || [] });
   }
   return { channel, broadcast };
 }
