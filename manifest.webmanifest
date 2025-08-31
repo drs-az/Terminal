@@ -1,6 +1,6 @@
 {
-  "name": "Terminal List",
-  "short_name": "TerminalList",
+  "name": "GEA",
+  "short_name": "GEA",
   "description": "Terminal\u2011style notes & lists. Passcode, JSON export/import, emergency wipe. Works offline.",
   "start_url": "./index.html",
   "display": "standalone",
