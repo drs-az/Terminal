@@ -118,6 +118,7 @@
     #note-attachments-preview .thumb{ display:inline-block; position:relative; margin-right:6px; }
     #note-attachments-preview img{ max-width:64px; max-height:64px; border:1px solid var(--border); }
     #note-attachments-preview .remove{ position:absolute; top:0; right:0; background:var(--bg); color:var(--fg); border:0; cursor:pointer; }
+    #note-attachments-preview.dragover{ outline:2px dashed var(--fg); }
   .cursor {
     display: inline-block;
     width: 10px;
@@ -431,14 +432,23 @@
     const noteCancel = document.getElementById('note-cancel');
     const noteSave = document.getElementById('note-save');
     let editingNote = null;
-
-    noteAttachmentsFiles.addEventListener('change', () => {
-      Array.from(noteAttachmentsFiles.files).forEach(file => {
-        if (!file.type.startsWith('image/')) return;
+    function showAttachmentError(msg){
+      const err = document.createElement('div');
+      err.className = 'error';
+      err.textContent = msg;
+      noteAttachmentsPreview.appendChild(err);
+      setTimeout(()=>err.remove(),2000);
+    }
+    function handleAttachmentFiles(fileList){
+      Array.from(fileList).forEach(file=>{
+        if (!file.type.startsWith('image/')){
+          showAttachmentError('Unsupported file type');
+          return;
+        }
         const entry = { file, dataUrl: '' };
         pendingAttachmentFiles.push(entry);
         const reader = new FileReader();
-        reader.onload = e => {
+        reader.onload = e=>{
           entry.dataUrl = e.target.result;
           const wrap = document.createElement('div');
           wrap.className = 'thumb';
@@ -448,8 +458,8 @@
           const btn = document.createElement('button');
           btn.textContent = '\u00d7';
           btn.className = 'remove';
-          btn.addEventListener('click', () => {
-            pendingAttachmentFiles = pendingAttachmentFiles.filter(x => x !== entry);
+          btn.addEventListener('click', ()=>{
+            pendingAttachmentFiles = pendingAttachmentFiles.filter(x=>x !== entry);
             wrap.remove();
           });
           wrap.appendChild(btn);
@@ -457,7 +467,34 @@
         };
         reader.readAsDataURL(file);
       });
+    }
+    noteAttachmentsFiles.addEventListener('change', ()=>{
+      handleAttachmentFiles(noteAttachmentsFiles.files);
       noteAttachmentsFiles.value = '';
+    });
+    noteAttachmentsPreview.addEventListener('dragenter', e=>{
+      e.preventDefault();
+      noteAttachmentsPreview.classList.add('dragover');
+    });
+    noteAttachmentsPreview.addEventListener('dragover', e=>{
+      e.preventDefault();
+    });
+    noteAttachmentsPreview.addEventListener('dragleave', e=>{
+      e.preventDefault();
+      noteAttachmentsPreview.classList.remove('dragover');
+    });
+    noteAttachmentsPreview.addEventListener('drop', e=>{
+      e.preventDefault();
+      noteAttachmentsPreview.classList.remove('dragover');
+      if (e.dataTransfer && e.dataTransfer.files.length){
+        handleAttachmentFiles(e.dataTransfer.files);
+      }
+    });
+    noteModal.addEventListener('paste', e=>{
+      if (e.clipboardData && e.clipboardData.files.length){
+        handleAttachmentFiles(e.clipboardData.files);
+        e.preventDefault();
+      }
     });
 
     function println(text, cls){
