@@ -107,12 +107,27 @@
       cursor: pointer;
     }
     button.terminal:hover{ outline: 1px dashed var(--border); }
+  .cursor {
+    display: inline-block;
+    width: 10px;
+    height: 1em;
+    background-color: #32cd32; /* terminal green */
+    margin-left: 2px;
+    animation: blink 1s steps(1) infinite;
+    vertical-align: bottom;
+  }
+
+  @keyframes blink {
+    50% {
+      opacity: 0;
+    }
+  }
   </style>
 </head>
 <body>
   <div id="header">
     <div class="left">
-      <div class="title">TERMINAL LIST</div>
+      <div class="title">TERMINAL LIST <span class="cursor"></span></div>
       <div class="subtitle">Type HELP to begin</div>
     </div>
     <div id="installWrap">
