@@ -1,13 +1,15 @@
 # Terminal List
 
 **Terminal List** is a browser-based Progressive Web App (PWA) for managing tasks and notes in a terminal-style interface.
-It supports optional passcode protection with AES-256 encryption, JSON export/import, and an emergency data wipe function.
+It supports optional passcode protection with AES-256 encryption, JSON export/import, due-date notifications, customizable themes, and an emergency data wipe function.
 
 ## Features
 
 - ✅ **Tasks**: Add items, tag them, set priorities or due dates, and search.
 - 📝 **Notes**: Create standalone notes or link them to tasks.
 - 🔐 **Passcode Lock**: Protect your data with AES-256-GCM encryption (derived with PBKDF2).
+- ⏰ **Due-date Notifications**: Receive reminders for tasks on their due date (requires notification permission).
+- 🎨 **Custom Themes**: Adjust terminal colors with the `THEME` command.
 - 📤 **Export/Import**: Backup or restore tasks and notes in JSON format.
 - 🚨 **Emergency Wipe**: One command securely wipes all local data.
 - 📱 **PWA Support**: Installable, offline-capable, works across desktop and mobile.
@@ -67,7 +69,7 @@ Type commands into the input bar or directly in the terminal view.
 - `edit <id|#> <text>` — edit text
 - `move <id|#> <up|down|n>` — reorder item
 - `tag <id|#> +foo -bar` — add/remove tags
-- `due <id|#> <YYYY-MM-DD>` — set due date (or "clear")
+- `due <id|#> <YYYY-MM-DD>` — set due date (notifications fire on the due date; or "clear")
 - `priority <id|#> <H|M|L>` — set priority
 - `search <query>` — find text in items
 
@@ -89,6 +91,11 @@ Type commands into the input bar or directly in the terminal view.
 - `setpass` — set or clear passcode
 - `lock` — clear decrypted data from memory
 - `unlock` — restore data with passcode
+
+
+### Other
+
+- `theme <bg> <fg> <border>` — set terminal colors
 
 ## Security Notes
 
