@@ -94,7 +94,96 @@ function editNoteRich(noteId, options = {}) {
 
 // --- Cloud Backup / Sync --------------------------------------------------
 
+const GDRIVE_CLIENT_ID = 'YOUR_CLIENT_ID.apps.googleusercontent.com';
+const GDRIVE_API_KEY = 'YOUR_API_KEY';
+const GDRIVE_SCOPES = 'https://www.googleapis.com/auth/drive.file';
+let gdriveInitPromise = null;
+
+function initGDrive() {
+  if (!gdriveInitPromise) {
+    gdriveInitPromise = new Promise((resolve, reject) => {
+      if (!window.gapi) return reject('gapi-not-loaded');
+      gapi.load('client:auth2', () => {
+        gapi.client.init({
+          apiKey: GDRIVE_API_KEY,
+          clientId: GDRIVE_CLIENT_ID,
+          discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'],
+          scope: GDRIVE_SCOPES,
+        }).then(() => resolve(), reject);
+      });
+    });
+  }
+  return gdriveInitPromise;
+}
+
+function ensureGDriveAuth() {
+  return initGDrive().then(() => {
+    const auth = gapi.auth2.getAuthInstance();
+    if (auth.isSignedIn.get()) return;
+    return auth.signIn();
+  });
+}
+
+function gdriveUpload() {
+  const fileName = 'terminal-list-backup.json';
+  const data = JSON.stringify({ items: window.items || [], notes: window.notes || [] });
+  return ensureGDriveAuth()
+    .then(() => gapi.client.drive.files.list({
+      q: `name='${fileName}' and trashed=false`,
+      fields: 'files(id,name)'
+    }))
+    .then(res => {
+      const fileId = res.result.files && res.result.files[0] && res.result.files[0].id;
+      const boundary = '-------314159265358979323846';
+      const delimiter = `\r\n--${boundary}\r\n`;
+      const closeDelim = `\r\n--${boundary}--`;
+      const metadata = { name: fileName, mimeType: 'application/json' };
+      const multipartRequestBody =
+        delimiter + 'Content-Type: application/json\r\n\r\n' +
+        JSON.stringify(metadata) +
+        delimiter + 'Content-Type: application/json\r\n\r\n' +
+        data + closeDelim;
+      const path = fileId ? `/upload/drive/v3/files/${fileId}` : '/upload/drive/v3/files';
+      const method = fileId ? 'PATCH' : 'POST';
+      return gapi.client.request({
+        path,
+        method,
+        params: { uploadType: 'multipart' },
+        headers: { 'Content-Type': 'multipart/related; boundary=' + boundary },
+        body: multipartRequestBody,
+      });
+    })
+    .then(() => 'uploaded');
+}
+
+function gdriveDownload() {
+  const fileName = 'terminal-list-backup.json';
+  return ensureGDriveAuth()
+    .then(() => gapi.client.drive.files.list({
+      q: `name='${fileName}' and trashed=false`,
+      fields: 'files(id,name)'
+    }))
+    .then(res => {
+      const fileId = res.result.files && res.result.files[0] && res.result.files[0].id;
+      if (!fileId) throw 'no-data';
+      return gapi.client.drive.files.get({ fileId, alt: 'media' });
+    })
+    .then(res => {
+      const data = typeof res.body === 'string' ? JSON.parse(res.body) : res.result;
+      window.items = data.items || [];
+      window.notes = data.notes || [];
+      if (typeof saveItems === 'function') saveItems(window.items);
+      if (typeof saveNotes === 'function') saveNotes(window.notes);
+      if (typeof rescheduleAllNotifications === 'function') rescheduleAllNotifications();
+      return 'downloaded';
+    });
+}
+
 function syncWithCloud(provider = 'local', mode = 'upload') {
+  if (provider === 'gdrive') {
+    return mode === 'upload' ? gdriveUpload() : gdriveDownload();
+  }
+
   const key = `terminal-list-sync-${provider}`;
   if (mode === 'upload') {
     const data = JSON.stringify({ items: window.items || [], notes: window.notes || [] });

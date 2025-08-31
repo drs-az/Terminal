@@ -16,7 +16,7 @@ It supports optional passcode protection with AES-256 encryption, JSON export/im
 - 🔁 **Recurring & Snoozeable Reminders**: Automatically reschedule tasks or snooze them to a later date.
 - 🔎 **Advanced Queries**: Filter tasks by tag, due date (including overdue), completion state, or priority.
 - ✨ **Rich Note Editing**: Add attachments, links, or formatted text to notes.
-- ☁️ **Local "Cloud" Backup**: Upload or download data to a localStorage sandbox.
+- ☁️ **Cloud Backup**: Upload or download data to a localStorage sandbox or Google Drive.
 - 🎭 **Theme Presets**: Apply or export theme JSON files for easy sharing.
 - 🤝 **Collaboration Channel**: Share task and note data with other tabs via BroadcastChannel.
 
@@ -110,7 +110,7 @@ Type commands into the input bar or directly in the terminal view.
 - `snooze <id|#> <YYYY-MM-DD>` — snooze a task to a new date
 - `aquery <query>` — run an advanced task query (tag/due/done/pri filters; `due:overdue` for past-due tasks)
 - `nrich <id|#> <title>|[body]|[link]` — edit note with rich fields
-- `backup [provider] [upload|download]` — sync data to a sandbox provider
+- `backup [provider] [upload|download]` — sync data to a sandbox provider (`local` or `gdrive`)
 - `themepreset <json>` — apply a theme preset from JSON
 - `themeexport [name]` — download current theme preset
 - `collab <session>` — join a collaboration channel and broadcast tasks/notes
@@ -140,6 +140,15 @@ TerminalListFeatures.editNoteRich(noteId, {
 });
 ```
 
+### Cloud Backup
+```js
+await TerminalListFeatures.syncWithCloud('local', 'upload');   // save to localStorage sandbox
+await TerminalListFeatures.syncWithCloud('local', 'download'); // restore from sandbox
+
+// Google Drive (requires API key & client ID in features.js)
+await TerminalListFeatures.syncWithCloud('gdrive', 'upload');
+await TerminalListFeatures.syncWithCloud('gdrive', 'download');
+=======
 ### Local "Cloud" Backup
 ```js
 await TerminalListFeatures.syncWithCloud('local', 'upload');   // save to localStorage sandbox
