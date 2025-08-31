@@ -382,6 +382,7 @@
       println('  NSEARCH <query>           find text in notes');
       println('Security & Data:');
       println('  STATS                     summary counts');
+      println('  CLEAR                     clear the display');
       println('  EXPORT                    download JSON (tasks + notes)');
       println('  IMPORT                    paste JSON to replace all data');
       println('  WIPE                      clear all data (with confirm)');
@@ -562,6 +563,11 @@
     };
 
     // General
+    cmd.clear = ()=>{
+      output.innerHTML = '';
+      lastTaskListCache = null;
+      lastNoteListCache = null;
+    };
     cmd.stats = ()=>{
       const total = items.length;
       const done = items.filter(t=>t.done).length;
@@ -676,7 +682,7 @@
       const args = parts;
       const fn = cmd[name];
       if (!fn){ println('unknown command. type HELP.', 'error'); return; }
-      if (locked && !['unlock','help'].includes(name)){
+      if (locked && !['unlock','help','clear'].includes(name)){
         println('data locked. type UNLOCK.', 'error');
         return;
       }
