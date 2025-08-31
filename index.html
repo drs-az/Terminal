@@ -244,18 +244,23 @@
 
     let state = loadState();
     let items = state.items;
-    let notes = state.notes.map(n=>({
-      id: n.id,
-      title: n.title || '',
-      description: n.description || '',
-      link: n.link || '',
-      body: n.body || n.text || '',
-      tags: n.tags || [],
-      taskId: n.taskId || null,
-      createdAt: n.createdAt,
-      updatedAt: n.updatedAt,
-    }));
+    let needsNoteMigration = false;
+    let notes = state.notes.map(n=>{
+      if (!n.body && n.text) needsNoteMigration = true;
+      return {
+        id: n.id,
+        title: n.title || '',
+        description: n.description || '',
+        link: n.link || '',
+        body: n.body || n.text || '',
+        tags: n.tags || [],
+        taskId: n.taskId || null,
+        createdAt: n.createdAt,
+        updatedAt: n.updatedAt,
+      };
+    });
     state.notes = notes;
+    if (needsNoteMigration) saveNotes(notes);
 
     // Service Worker registration and notification timers
     let swRegistration = null;
@@ -660,7 +665,7 @@
     cmd.nsearch = (args)=>{
       const q = args.join(' ').toLowerCase();
       if (!q) return println('usage: NSEARCH <query>', 'error');
-      const hits = notes.filter(n=> [n.title, n.description, n.link, n.body].some(f => (f||'').toLowerCase().includes(q)));
+      const hits = notes.filter(n=> [n.title, n.description, n.link, n.body || n.text].some(f => (f||'').toLowerCase().includes(q)));
       printNotes(hits, 'SEARCH NOTES: ' + q);
     };
 
@@ -672,7 +677,7 @@
       println('Title: ' + (n.title || ''));
       println('Description: ' + (n.description || ''));
       println('Link: ' + (n.link || ''));
-      println('Body: ' + (n.body || ''));
+      println('Body: ' + (n.body || n.text || ''));
       const tags = (n.tags||[]).map(t=>'@'+t).join(' ');
       println('Tags: ' + tags);
       println('Linked Task: ' + (n.taskId || ''));
