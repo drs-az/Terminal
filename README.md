@@ -102,6 +102,7 @@ Type commands into the input bar or directly in the terminal view.
 - `sendmsg` — compose and share an encrypted message
 - `recmsg` — paste shared message JSON and decrypt with a passcode
 - `replymsg <id|#>` — reply to a message
+- `delmsg <id|#>` — delete a message
 
 ### Security & Data
 - `stats` — summary counts

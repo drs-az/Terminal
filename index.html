@@ -784,6 +784,7 @@
       println('  SENDMSG                  compose and share a message');
       println('  RECMSG                   receive a shared message');
       println('  REPLYMSG <id|#>          reply to a message');
+      println('  DELMSG <id|#>           delete a message');
       println('Security & Data:');
       println('  STATS                     summary counts');
       println('  CLEAR                     clear the display');
@@ -1180,6 +1181,14 @@
       if (!m) return println('not found', 'error');
       showMessageModal(m);
     };
+    cmd.delmsg = (args)=>{
+      const ref = args[0];
+      const m = resolveMessageRef(ref, lastMsgListCache);
+      if (!m) return println('not found', 'error');
+      messages = messages.filter(x=>x.id!==m.id);
+      saveMessages(messages);
+      println('message deleted.', 'ok');
+    };
 
     // General
     cmd.syntax = (args)=>{
@@ -1234,6 +1243,10 @@
         replymsg: [
           'REPLYMSG <id|#>',
           '  Reply to a message'
+        ],
+        delmsg: [
+          'DELMSG <id|#>',
+          '  Delete a message'
         ],
         msgs: [
           'MSGS',
@@ -1388,31 +1401,6 @@
           messages.push(obj);
           messages.sort((a,b)=> new Date(b.date+' '+b.time) - new Date(a.date+' '+a.time));
           saveMessages(messages);
-        } else {
-          throw new Error('unknown type');
-        }
-        println('imported.', 'ok');
-      }catch(e){
-        println('import failed: ' + e.message, 'error');
-      }
-    };
-
-    cmd.importshare = async ()=>{
-      println('Paste shared JSON and press Enter. Type CANCEL to abort.', 'muted');
-      const text = await getNextLine();
-      if (text.trim().toLowerCase() === 'cancel'){ println('import canceled.','muted'); return; }
-      try{
-        const payload = JSON.parse(text);
-        if (!payload || !payload.enc || !payload.type) throw new Error('invalid format');
-        println('Enter share passcode:', 'muted');
-        const pass = await getNextLine(true);
-        const obj = await decryptShared(payload.enc, pass);
-        if (payload.type === 'item'){
-          if (!obj.id || items.some(t=>t.id===obj.id)) obj.id = makeId();
-          items.push(obj); saveItems(items);
-        } else if (payload.type === 'note'){
-          if (!obj.id || notes.some(n=>n.id===obj.id)) obj.id = makeId();
-          notes.push(obj); saveNotes(notes);
         } else {
           throw new Error('unknown type');
         }
