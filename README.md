@@ -111,6 +111,7 @@ Type commands into the input bar or directly in the terminal view.
 - `aquery <query>` — run an advanced task query (tag/due/done/pri filters; `due:overdue` for past-due tasks)
 - `nrich <id|#> <title>|[body]|[link]` — edit note with rich fields
 - `backup [provider] [upload|download]` — sync data to a sandbox provider (`local` or `gdrive`)
+- `gdriveconfig <client_id> <api_key>` — store Google Drive credentials for backup
 - `themepreset <json>` — apply a theme preset from JSON
 - `themeexport [name]` — download current theme preset
 - `collab <session>` — join a collaboration channel and broadcast tasks/notes
@@ -144,15 +145,17 @@ TerminalListFeatures.editNoteRich(noteId, {
 ```js
 await TerminalListFeatures.syncWithCloud('local', 'upload');   // save to localStorage sandbox
 await TerminalListFeatures.syncWithCloud('local', 'download'); // restore from sandbox
+```
 
-// Google Drive (requires API key & client ID in features.js)
+### Google Drive Backup
+Run inside the app:
+```
+GDRIVECONFIG <client_id> <api_key>
+```
+Then:
+```js
 await TerminalListFeatures.syncWithCloud('gdrive', 'upload');
 await TerminalListFeatures.syncWithCloud('gdrive', 'download');
-=======
-### Local "Cloud" Backup
-```js
-await TerminalListFeatures.syncWithCloud('local', 'upload');   // save to localStorage sandbox
-await TerminalListFeatures.syncWithCloud('local', 'download'); // restore from sandbox
 ```
 
 ### Theme Presets
