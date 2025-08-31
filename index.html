@@ -660,7 +660,7 @@
       println('');
       println('Tasks:');
       println('  ADD <text>                add a new item');
-      println('  LIST [all|open|done|@tag] [--sort=due|pri] list items');
+      println('  LIST [all|open|done|@tag] [--sort=due|pri] list items; @tag also shows notes');
       println('  SHOW <id|#>               show a task with attached notes');
       println('  DONE <id|#>               mark done');
       println('  UNDONE <id|#>             unmark done');
@@ -682,6 +682,7 @@
       println('  NDELETE <id|#>            delete a note');
       println('  NLINK <note|#> <task|#>   link a note to a task');
       println('  NUNLINK <note|#>          unlink note from task');
+      println('  NTAG <id|#> +foo -bar     add/remove tags');
       println('  READNOTE <id|#>          show note details');
       println('  SEEPIC <id|#>            view note image');
       println('  DLPIC <id|#>             download note image');
@@ -722,6 +723,12 @@
       let title = 'LIST ' + filter.toUpperCase();
       if (sortBy) title += ' SORTED BY ' + sortBy.toUpperCase();
       printList(lastTaskListCache, title);
+      if (filter.startsWith('@')) {
+        lastNoteListCache = listFilteredNotes(filter);
+        printNotes(lastNoteListCache, 'NOTES ' + filter.toUpperCase());
+      } else {
+        lastNoteListCache = null;
+      }
     };
     cmd.show = (args)=>{
       const ref = args[0];
@@ -910,6 +917,24 @@
       n.taskId = null; n.updatedAt = Date.now(); saveNotes(notes);
       println('note unlinked.', 'ok'); printNote(n);
     };
+    cmd.ntag = (args)=>{
+      const ref = args.shift();
+      const n = resolveNoteRef(ref, lastNoteListCache);
+      if (!n) return println('not found', 'error');
+      n.tags = n.tags || [];
+      for (const tok of args){
+        if (tok.startsWith('+')){
+          const tag = tok.slice(1);
+          if (!n.tags.includes(tag)) n.tags.push(tag);
+        } else if (tok.startsWith('-')){
+          const tag = tok.slice(1);
+          n.tags = n.tags.filter(x=>x!==tag);
+        }
+      }
+      n.updatedAt = Date.now();
+      saveNotes(notes);
+      println('tags updated.', 'ok'); printNote(n);
+    };
     cmd.nsearch = (args)=>{
       const q = args.join(' ').toLowerCase();
       if (!q) return println('usage: NSEARCH <query>', 'error');
@@ -1014,6 +1039,10 @@
         dlpic: [
           'DLPIC <id|#>',
           '  Download first image attachment of note'
+        ],
+        ntag: [
+          'NTAG <id|#> +foo -bar',
+          '  Add (+) or remove (-) tags from a note'
         ]
       };
       if (!topic || !info[topic]) {
