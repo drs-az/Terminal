@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>Terminal List</title>
+  <title>Terminal</title>
   <!-- PWA refs -->
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#32cd32">
@@ -139,7 +139,7 @@
 <body>
   <div id="header">
     <div class="left">
-      <div class="title">TERMINAL LIST<span class="cursor"></span></div>
+      <div class="title">TERMINAL<span class="cursor"></span></div>
       <div class="subtitle">Type HELP to begin</div>
     </div>
     <div id="installWrap">
@@ -448,6 +448,7 @@
     const picModalImg = document.getElementById('pic-modal-img');
     const picClose = document.getElementById('pic-close');
     let currentPicUrl = '';
+
     function showAttachmentError(msg){
       const err = document.createElement('div');
       err.className = 'error';

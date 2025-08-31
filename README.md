@@ -23,8 +23,9 @@ It supports optional passcode protection with AES-256 encryption, JSON export/im
 ## Project Structure
 
 ```
-TerminalList_PWA/
+Terminal-List/
  ├── index.html              # Main app UI and logic
+ ├── features.js             # Feature helpers (recurring reminders, cloud sync, etc.)
  ├── manifest.webmanifest    # PWA manifest file
  ├── sw.js                   # Service worker for offline support
  └── icons/                  # App icons
@@ -121,7 +122,7 @@ Type commands into the input bar or directly in the terminal view.
 
 ## Feature Helpers
 
-A global `TerminalListFeatures` object exposes experimental helpers. Invoke these from the browser console.
+A global `TerminalListFeatures` object exposes experimental helpers, implemented in `features.js`. Invoke these from the browser console.
 
 ### Recurring & Snoozeable Reminders
 ```js

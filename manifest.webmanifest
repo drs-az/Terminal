@@ -1,6 +1,6 @@
 {
-  "name": "DO NOT OPEN",
-  "short_name": "DO NOT OPEN",
+  "name": "Terminal",
+  "short_name": "Terminal",
   "description": "Terminal\u2011style notes & lists. Passcode, JSON export/import, emergency wipe. Works offline.",
   "start_url": "./index.html",
   "display": "standalone",
