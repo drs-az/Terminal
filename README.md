@@ -74,9 +74,10 @@ Type commands into the input bar or directly in the terminal view.
 - `search <query>` — find text in items
 
 ### Notes
-- `note <text>` — add a note
+- `note <title>|<desc>|[link]|[body]` — add a note
 - `notes [all|@tag|task:<ref>]` — list notes
-- `nedit <id|#> <text>` — edit a note
+- `nedit <id|#> <title>|<desc>|[link]|[body]>` — edit a note
+- `readnote <id|#>` — show all fields for a note
 - `ndelete <id|#>` — delete a note
 - `nlink <note|#> <task|#>` — link a note to a task
 - `nunlink <note|#>` — unlink note from task
