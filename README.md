@@ -6,7 +6,7 @@ It supports optional passcode protection with AES-256 encryption, JSON export/im
 ## Features
 
 - ✅ **Tasks**: Add items, tag them, set priorities or due dates, and search.
-- 📝 **Notes**: Create standalone notes or link them to tasks.
+- 📝 **Notes**: Create standalone notes or link them to tasks, and tag them.
 - 🔐 **Passcode Lock**: Protect your data with AES-256-GCM encryption (derived with PBKDF2).
 - ⏰ **Due-date Notifications**: Receive reminders for tasks on their due date (requires notification permission).
 - 🎨 **Custom Themes**: Adjust terminal colors with the `THEME` command.
@@ -68,7 +68,7 @@ Type commands into the input bar or directly in the terminal view.
 
 ### Tasks
 - `add <text>` — add a new item
-- `list [all|open|done|@tag]` — list items
+- `list [all|open|done|@tag]` — list items; when using `@tag` notes are also shown
 - `show <id|#>` — show a task with attached notes
 - `done <id|#>` — mark done
 - `undone <id|#>` — unmark done
@@ -90,6 +90,7 @@ Type commands into the input bar or directly in the terminal view.
 - `ndelete <id|#>` — delete a note
 - `nlink <note|#> <task|#>` — link a note to a task
 - `nunlink <note|#>` — unlink note from task
+- `ntag <id|#> +foo -bar` — add/remove tags
 - `nsearch <query>` — find text in notes
 
 ### Security & Data
