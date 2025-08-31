@@ -615,7 +615,7 @@
     cmd.setpass = async ()=>{
       if (locked){ println('unlock first', 'error'); return; }
       println('Enter new passcode (blank to disable):', 'muted');
-      const pass = await getNextLine();
+      const pass = await getNextLine(true);
       if (!pass){
         passKey = null; passSalt = null;
         await saveState(state);
@@ -649,7 +649,7 @@
         const obj = JSON.parse(raw);
         if (!obj.enc){ println('no passcode set','error'); return; }
         println('Enter passcode:', 'muted');
-        const pass = await getNextLine();
+        const pass = await getNextLine(true);
         const saltBytes = b64ToBuf(obj.enc.salt);
         const key = await deriveKey(pass, saltBytes);
         const iv = b64ToBuf(obj.enc.iv);
@@ -688,14 +688,16 @@
       }
       Promise.resolve(fn(args)).catch(err=>println('error: '+err.message,'error'));
     }
-    function getNextLine(){
+    function getNextLine(mask = false){
       awaitingLine = true;
+      if (mask) command.type = 'password';
       return new Promise(resolve => {
         function handler(e){
           if (e.key === 'Enter'){
             const val = command.value;
-            println('> ' + val);
+            println('> ' + (mask ? '*'.repeat(val.length) : val));
             command.value = '';
+            command.type = 'text';
             command.removeEventListener('keydown', handler);
             awaitingLine = false;
             resolve(val);
