@@ -86,7 +86,7 @@
     .ok{ color: #7fffd4; }
     .task-done{ opacity: 0.7; text-decoration: line-through; }
     /* Modal + Install Help */
-    #modal, #install-help{
+    #modal, #install-help, #note-modal{
       position: fixed; inset: 0; display: none;
       align-items: center; justify-content: center;
       background: rgba(0,0,0,0.92);
@@ -107,6 +107,14 @@
       cursor: pointer;
     }
     button.terminal:hover{ outline: 1px dashed var(--border); }
+    #note-modal label{ display:block; margin-top:6px; }
+    #note-modal input, #note-modal textarea{
+      width:100%;
+      background: transparent; color: var(--fg);
+      border:1px solid var(--border);
+      font-family: var(--font);
+      padding:6px; box-sizing:border-box;
+    }
   .cursor {
     display: inline-block;
     width: 10px;
@@ -152,6 +160,24 @@
       <div class="row">
         <button class="terminal" id="btn-cancel">Cancel</button>
         <button class="terminal" id="btn-confirm">WIPE</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="note-modal" role="dialog" aria-modal="true" aria-labelledby="note-modal-title">
+    <div class="card">
+      <div id="note-modal-title" class="line">Add Note</div>
+      <label for="note-title" class="line">Title</label>
+      <input id="note-title" type="text" />
+      <label for="note-description" class="line">Description</label>
+      <textarea id="note-description" rows="2"></textarea>
+      <label for="note-links" class="line">Links</label>
+      <input id="note-links" type="text" />
+      <label for="note-body" class="line">Body</label>
+      <textarea id="note-body" rows="4"></textarea>
+      <div class="row">
+        <button class="terminal" id="note-cancel">Cancel</button>
+        <button class="terminal" id="note-save">Save</button>
       </div>
     </div>
   </div>
@@ -340,6 +366,15 @@
     const modal = document.getElementById('modal');
     const btnCancel = document.getElementById('btn-cancel');
     const btnOK = document.getElementById('btn-confirm');
+    const noteModal = document.getElementById('note-modal');
+    const noteModalTitle = document.getElementById('note-modal-title');
+    const noteTitleInput = document.getElementById('note-title');
+    const noteDescriptionInput = document.getElementById('note-description');
+    const noteLinksInput = document.getElementById('note-links');
+    const noteBodyInput = document.getElementById('note-body');
+    const noteCancel = document.getElementById('note-cancel');
+    const noteSave = document.getElementById('note-save');
+    let editingNote = null;
 
     function println(text, cls){
       const div = document.createElement('div');
@@ -668,13 +703,8 @@
 
     // Notes
     let lastNoteListCache = null;
-    cmd.note = (args)=>{
-      const parts = args.join(' ').split('|').map(s=>s.trim());
-      const [title, description, link='', body=''] = parts;
-      if (!title || !description) return println('usage: NOTE <title>|<description>|[link]|[body]', 'error');
-      const n = { id: makeId(), title, description, links: link ? [link] : [], body, tags:[], taskId: null, createdAt: Date.now(), updatedAt: Date.now() };
-      notes.push(n); saveNotes(notes);
-      println('note added.', 'ok'); printNote(n);
+    cmd.note = ()=>{
+      showNoteModal();
     };
     cmd.notes = (args)=>{
       const filter = args[0] || 'all';
@@ -685,27 +715,14 @@
       const ref = args.shift();
       const n = resolveNoteRef(ref, lastNoteListCache);
       if (!n) return println('not found', 'error');
-      const parts = args.join(' ').split('|').map(s=>s.trim());
-      const [title, description, link='', body=''] = parts;
-      if (!title || !description) return println('usage: NEDIT <id|#> <title>|<description>|[link]|[body]', 'error');
-      n.title = title; n.description = description; n.links = link ? [link] : []; n.body = body; n.updatedAt = Date.now(); saveNotes(notes);
-      println('note edited.', 'ok'); printNote(n);
+      showNoteModal(n);
     };
 
     cmd.nrich = (args)=>{
       const ref = args.shift();
       const n = resolveNoteRef(ref, lastNoteListCache);
       if (!n) return println('not found', 'error');
-      const parts = args.join(' ').split('|').map(s=>s.trim());
-      const [title, body, link, attach] = parts;
-      const updated = TerminalListFeatures.editNoteRich(n.id, {
-        title: title || n.title,
-        body: body || n.body,
-        links: link ? [link] : (n.links || []),
-        attachments: attach ? attach.split(',').map(s=>s.trim()).filter(Boolean) : (n.attachments || [])
-      });
-      if (!updated) return println('note not updated.', 'error');
-      println('note updated.', 'ok'); printNote(updated);
+      showNoteModal(n);
     };
     cmd.ndelete = (args)=>{
       const ref = args[0];
@@ -1024,6 +1041,48 @@
       saveItems(items); saveNotes(notes);
       closeModal();
       println('All data wiped.','ok');
+    });
+
+    function showNoteModal(note){
+      editingNote = note || null;
+      noteModalTitle.textContent = note ? 'Edit Note' : 'Add Note';
+      noteTitleInput.value = note ? note.title || '' : '';
+      noteDescriptionInput.value = note ? note.description || '' : '';
+      noteLinksInput.value = note ? (note.links || []).join(', ') : '';
+      noteBodyInput.value = note ? note.body || '' : '';
+      noteModal.style.display = 'flex';
+      noteTitleInput.focus();
+    }
+    function hideNoteModal(){
+      noteModal.style.display = 'none';
+      editingNote = null;
+    }
+    noteCancel.addEventListener('click', hideNoteModal);
+    noteSave.addEventListener('click', ()=>{
+      const title = noteTitleInput.value.trim();
+      const description = noteDescriptionInput.value.trim();
+      if (!title || !description){
+        println('title and description required','error');
+        return;
+      }
+      const links = noteLinksInput.value.split(',').map(s=>s.trim()).filter(Boolean);
+      const body = noteBodyInput.value.trim();
+      if (editingNote){
+        editingNote.title = title;
+        editingNote.description = description;
+        editingNote.links = links;
+        editingNote.body = body;
+        editingNote.updatedAt = Date.now();
+        println('note edited.','ok');
+        printNote(editingNote);
+      }else{
+        const n = { id: makeId(), title, description, links, body, tags:[], taskId:null, createdAt:Date.now(), updatedAt:Date.now() };
+        notes.push(n);
+        println('note added.','ok');
+        printNote(n);
+      }
+      saveNotes(notes);
+      hideNoteModal();
     });
 
     /************
