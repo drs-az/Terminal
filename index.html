@@ -453,6 +453,9 @@
      ************/
     const cmd = {};
     cmd.help = () => {
+      println('General:');
+      println('  SYNTAX <command>          show command syntax');
+      println('');
       println('Tasks:');
       println('  ADD <text>                add a new item');
       println('  LIST [all|open|done|@tag] [--sort=due|pri] list items');
@@ -473,7 +476,7 @@
       println('  NOTE <title>|<desc>|[link]|[body] add a note');
       println('  NOTES [all|@tag|task:<ref>] list notes');
       println('  NEDIT <id|#> <title>|<desc>|[link]|[body] edit a note');
-      println('  NRICH <id|#> <title>|[body]|[link] rich edit a note');
+      println('  NRICH <id|#> <title>|[body]|[link]|[attachments] rich edit a note');
       println('  NDELETE <id|#>            delete a note');
       println('  NLINK <note|#> <task|#>   link a note to a task');
       println('  NUNLINK <note|#>          unlink note from task');
@@ -687,11 +690,12 @@
       const n = resolveNoteRef(ref, lastNoteListCache);
       if (!n) return println('not found', 'error');
       const parts = args.join(' ').split('|').map(s=>s.trim());
-      const [title, body, link] = parts;
+      const [title, body, link, attach] = parts;
       TerminalListFeatures.editNoteRich(n.id, {
         title: title || n.title,
         body: body || n.body,
-        links: link ? [link] : n.links
+        links: link ? [link] : (n.links || []),
+        attachments: attach ? attach.split(',').map(s=>s.trim()).filter(Boolean) : (n.attachments || [])
       });
       println('note updated.', 'ok'); printNote(n);
     };
@@ -735,12 +739,39 @@
       println('Description: ' + (n.description || ''));
       println('Link: ' + (n.link || ''));
       println('Body: ' + (n.body || n.text || ''));
+      const atts = (n.attachments || []).join(', ');
+      println('Attachments: ' + (atts || ''));
       const tags = (n.tags||[]).map(t=>'@'+t).join(' ');
       println('Tags: ' + tags);
       println('Linked Task: ' + (n.taskId || ''));
     };
 
     // General
+    cmd.syntax = (args)=>{
+      const topic = (args[0] || '').toLowerCase();
+      const info = {
+        nrich: [
+          'NRICH <id|#> <title>|[body]|[link]|[attachments]',
+          '  Rich edit a note; fields separated by "|".',
+          '  title        new title (optional)',
+          '  body         note body (optional)',
+          '  link         URL or note:<id> (optional)',
+          '  attachments  comma-separated URLs or data URIs (optional)'
+        ],
+        note: [
+          'NOTE <title>|<desc>|[link]|[body]',
+          '  Create a note; fields separated by "|".',
+          '  link and body are optional.',
+          '  Use NRICH to add attachments later.'
+        ]
+      };
+      if (!topic || !info[topic]) {
+        println('usage: SYNTAX <command>', 'muted');
+        println('available: ' + Object.keys(info).map(k=>k.toUpperCase()).join(', '), 'muted');
+        return;
+      }
+      info[topic].forEach(line => println(line));
+    };
     cmd.clear = ()=>{
       output.innerHTML = '';
       lastTaskListCache = null;

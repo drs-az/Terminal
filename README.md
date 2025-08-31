@@ -102,6 +102,7 @@ Type commands into the input bar or directly in the terminal view.
 
 ### Other
 
+- `syntax <command>` — show detailed usage for a command (e.g., `syntax nrich`)
 - `theme <bg> <fg> <border>` — set terminal colors
 
 ### Experimental Feature Commands
@@ -109,7 +110,7 @@ Type commands into the input bar or directly in the terminal view.
 - `recur <id|#> <n> <unit>` — schedule recurring reminder (`unit` = minute|hour|day|week)
 - `snooze <id|#> <YYYY-MM-DD>` — snooze a task to a new date
 - `aquery <query>` — run an advanced task query (tag/due/done/pri filters; `due:overdue` for past-due tasks)
-- `nrich <id|#> <title>|[body]|[link]` — edit note with rich fields
+- `nrich <id|#> <title>|[body]|[link]|[attachments]` — edit note with rich fields; attachments are a comma-separated list of URLs or data URIs
 - `backup [provider] [upload|download]` — sync data to a sandbox provider (`local` or `gdrive`)
 - `gdriveconfig <client_id> <api_key>` — store Google Drive credentials for backup
 - `themepreset <json>` — apply a theme preset from JSON
