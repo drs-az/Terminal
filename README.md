@@ -82,6 +82,7 @@ Type commands into the input bar or directly in the terminal view.
 
 ### Security & Data
 - `stats` — summary counts
+- `clear` — clear the display
 - `export` — download JSON (tasks + notes)
 - `import` — paste JSON to replace all data
 - `wipe` — clear all data (with confirm)
