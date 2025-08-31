@@ -87,7 +87,9 @@ function editNoteRich(noteId, options = {}) {
   if (options.title !== undefined) note.title = options.title;
   if (options.body !== undefined) note.body = options.body;
   if (options.attachments !== undefined) note.attachments = options.attachments;
-  if (options.links !== undefined) note.links = options.links;
+  if (options.links !== undefined) {
+    note.links = Array.isArray(options.links) ? options.links : [options.links];
+  }
   if (typeof saveNotes === 'function') saveNotes(notes);
   return note;
 }

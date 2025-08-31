@@ -254,7 +254,7 @@
         id: n.id,
         title: n.title || '',
         description: n.description || '',
-        link: n.link || '',
+        links: Array.isArray(n.links) ? n.links : (n.link ? [n.link] : []),
         body: n.body || n.text || '',
         tags: n.tags || [],
         taskId: n.taskId || null,
@@ -672,7 +672,7 @@
       const parts = args.join(' ').split('|').map(s=>s.trim());
       const [title, description, link='', body=''] = parts;
       if (!title || !description) return println('usage: NOTE <title>|<description>|[link]|[body]', 'error');
-      const n = { id: makeId(), title, description, link, body, tags:[], taskId: null, createdAt: Date.now(), updatedAt: Date.now() };
+      const n = { id: makeId(), title, description, links: link ? [link] : [], body, tags:[], taskId: null, createdAt: Date.now(), updatedAt: Date.now() };
       notes.push(n); saveNotes(notes);
       println('note added.', 'ok'); printNote(n);
     };
@@ -688,7 +688,7 @@
       const parts = args.join(' ').split('|').map(s=>s.trim());
       const [title, description, link='', body=''] = parts;
       if (!title || !description) return println('usage: NEDIT <id|#> <title>|<description>|[link]|[body]', 'error');
-      n.title = title; n.description = description; n.link = link; n.body = body; n.updatedAt = Date.now(); saveNotes(notes);
+      n.title = title; n.description = description; n.links = link ? [link] : []; n.body = body; n.updatedAt = Date.now(); saveNotes(notes);
       println('note edited.', 'ok'); printNote(n);
     };
 
@@ -733,7 +733,7 @@
     cmd.nsearch = (args)=>{
       const q = args.join(' ').toLowerCase();
       if (!q) return println('usage: NSEARCH <query>', 'error');
-      const hits = notes.filter(n=> [n.title, n.description, n.link, n.body || n.text].some(f => (f||'').toLowerCase().includes(q)));
+      const hits = notes.filter(n=> [n.title, n.description, ...(n.links||[]), n.body || n.text].some(f => (f||'').toLowerCase().includes(q)));
       printNotes(hits, 'SEARCH NOTES: ' + q);
     };
 
@@ -744,7 +744,8 @@
       println('(' + n.id + ')');
       println('Title: ' + (n.title || ''));
       println('Description: ' + (n.description || ''));
-      println('Link: ' + (n.link || ''));
+      const links = (n.links || []).join(', ');
+      println('Links: ' + (links || ''));
       println('Body: ' + (n.body || n.text || ''));
       const atts = (n.attachments || []).join(', ');
       println('Attachments: ' + (atts || ''));
@@ -877,7 +878,7 @@
             id: n.id,
             title: n.title || '',
             description: n.description || '',
-            link: n.link || '',
+            links: Array.isArray(n.links) ? n.links : (n.link ? [n.link] : []),
             body: n.body || n.text || '',
             tags: n.tags || [],
             taskId: n.taskId || null,
