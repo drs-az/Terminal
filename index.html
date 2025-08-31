@@ -244,7 +244,18 @@
 
     let state = loadState();
     let items = state.items;
-    let notes = state.notes;
+    let notes = state.notes.map(n=>({
+      id: n.id,
+      title: n.title || '',
+      description: n.description || '',
+      link: n.link || '',
+      body: n.body || n.text || '',
+      tags: n.tags || [],
+      taskId: n.taskId || null,
+      createdAt: n.createdAt,
+      updatedAt: n.updatedAt,
+    }));
+    state.notes = notes;
 
     // Service Worker registration and notification timers
     let swRegistration = null;
@@ -348,8 +359,8 @@
     function printNote(n, indexShown){
       const idx = typeof indexShown === 'number' ? '['+indexShown+'] ' : '';
       const tags = (n.tags||[]).map(s=>' @'+s).join('');
-      const link = n.taskId ? ` linked:(${n.taskId})` : '';
-      const line = `${idx}(${n.id}) 📝 ${n.text}${tags}${link}`;
+      const taskLink = n.taskId ? ` linked:(${n.taskId})` : '';
+      const line = `${idx}(${n.id}) 📝 ${n.title || ''} — ${n.description || ''}${tags}${taskLink}`;
       const div = document.createElement('div');
       div.className = 'line';
       div.textContent = line;
@@ -448,12 +459,13 @@
       println('  PRIORITY <id|#> <H|M|L>   set priority');
       println('  SEARCH <query>            find text in items');
       println('Notes:');
-      println('  NOTE <text>               add a note');
+      println('  NOTE <title>|<desc>|[link]|[body] add a note');
       println('  NOTES [all|@tag|task:<ref>] list notes');
-      println('  NEDIT <id|#> <text>       edit a note');
+      println('  NEDIT <id|#> <title>|<desc>|[link]|[body] edit a note');
       println('  NDELETE <id|#>            delete a note');
       println('  NLINK <note|#> <task|#>   link a note to a task');
       println('  NUNLINK <note|#>          unlink note from task');
+      println('  READNOTE <id|#>          show note details');
       println('  NSEARCH <query>           find text in notes');
       println('Security & Data:');
       println('  STATS                     summary counts');
@@ -599,9 +611,10 @@
     // Notes
     let lastNoteListCache = null;
     cmd.note = (args)=>{
-      const text = args.join(' ').trim();
-      if (!text) return println('usage: NOTE <text>', 'error');
-      const n = { id: makeId(), text, tags:[], taskId: null, createdAt: Date.now(), updatedAt: Date.now() };
+      const parts = args.join(' ').split('|').map(s=>s.trim());
+      const [title, description, link='', body=''] = parts;
+      if (!title || !description) return println('usage: NOTE <title>|<description>|[link]|[body]', 'error');
+      const n = { id: makeId(), title, description, link, body, tags:[], taskId: null, createdAt: Date.now(), updatedAt: Date.now() };
       notes.push(n); saveNotes(notes);
       println('note added.', 'ok'); printNote(n);
     };
@@ -614,9 +627,10 @@
       const ref = args.shift();
       const n = resolveNoteRef(ref, lastNoteListCache);
       if (!n) return println('not found', 'error');
-      const text = args.join(' ').trim();
-      if (!text) return println('usage: NEDIT <id|#> <text>', 'error');
-      n.text = text; n.updatedAt = Date.now(); saveNotes(notes);
+      const parts = args.join(' ').split('|').map(s=>s.trim());
+      const [title, description, link='', body=''] = parts;
+      if (!title || !description) return println('usage: NEDIT <id|#> <title>|<description>|[link]|[body]', 'error');
+      n.title = title; n.description = description; n.link = link; n.body = body; n.updatedAt = Date.now(); saveNotes(notes);
       println('note edited.', 'ok'); printNote(n);
     };
     cmd.ndelete = (args)=>{
@@ -646,8 +660,22 @@
     cmd.nsearch = (args)=>{
       const q = args.join(' ').toLowerCase();
       if (!q) return println('usage: NSEARCH <query>', 'error');
-      const hits = notes.filter(n=> (n.text||'').toLowerCase().includes(q));
+      const hits = notes.filter(n=> [n.title, n.description, n.link, n.body].some(f => (f||'').toLowerCase().includes(q)));
       printNotes(hits, 'SEARCH NOTES: ' + q);
+    };
+
+    cmd.readnote = (args)=>{
+      const ref = args[0];
+      const n = resolveNoteRef(ref, lastNoteListCache);
+      if (!n) return println('not found', 'error');
+      println('(' + n.id + ')');
+      println('Title: ' + (n.title || ''));
+      println('Description: ' + (n.description || ''));
+      println('Link: ' + (n.link || ''));
+      println('Body: ' + (n.body || ''));
+      const tags = (n.tags||[]).map(t=>'@'+t).join(' ');
+      println('Tags: ' + tags);
+      println('Linked Task: ' + (n.taskId || ''));
     };
 
     // General
@@ -698,7 +726,17 @@
           items = incoming;
         } else if (incoming && Array.isArray(incoming.items) && Array.isArray(incoming.notes)){
           items = incoming.items;
-          notes = incoming.notes;
+          notes = incoming.notes.map(n=>({
+            id: n.id,
+            title: n.title || '',
+            description: n.description || '',
+            link: n.link || '',
+            body: n.body || n.text || '',
+            tags: n.tags || [],
+            taskId: n.taskId || null,
+            createdAt: n.createdAt,
+            updatedAt: n.updatedAt,
+          }));
         } else {
           throw new Error('invalid format');
         }
