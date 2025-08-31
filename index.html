@@ -1396,6 +1396,31 @@
         println('import failed: ' + e.message, 'error');
       }
     };
+
+    cmd.importshare = async ()=>{
+      println('Paste shared JSON and press Enter. Type CANCEL to abort.', 'muted');
+      const text = await getNextLine();
+      if (text.trim().toLowerCase() === 'cancel'){ println('import canceled.','muted'); return; }
+      try{
+        const payload = JSON.parse(text);
+        if (!payload || !payload.enc || !payload.type) throw new Error('invalid format');
+        println('Enter share passcode:', 'muted');
+        const pass = await getNextLine(true);
+        const obj = await decryptShared(payload.enc, pass);
+        if (payload.type === 'item'){
+          if (!obj.id || items.some(t=>t.id===obj.id)) obj.id = makeId();
+          items.push(obj); saveItems(items);
+        } else if (payload.type === 'note'){
+          if (!obj.id || notes.some(n=>n.id===obj.id)) obj.id = makeId();
+          notes.push(obj); saveNotes(notes);
+        } else {
+          throw new Error('unknown type');
+        }
+        println('imported.', 'ok');
+      }catch(e){
+        println('import failed: ' + e.message, 'error');
+      }
+    };
     cmd.wipe = ()=> openModal();
 
     cmd.setpass = async ()=>{
