@@ -13,6 +13,12 @@ It supports optional passcode protection with AES-256 encryption, JSON export/im
 - 📤 **Export/Import**: Backup or restore tasks and notes in JSON format.
 - 🚨 **Emergency Wipe**: One command securely wipes all local data.
 - 📱 **PWA Support**: Installable, offline-capable, works across desktop and mobile.
+- 🔁 **Recurring & Snoozeable Reminders**: Automatically reschedule tasks or snooze them to a later date.
+- 🔎 **Advanced Queries**: Filter tasks by tag, due date, or completion state.
+- ✨ **Rich Note Editing**: Add attachments, links, or formatted text to notes.
+- ☁️ **Local "Cloud" Backup**: Upload or download data to a localStorage sandbox.
+- 🎭 **Theme Presets**: Apply or export theme JSON files for easy sharing.
+- 🤝 **Collaboration Channel**: Share task and note data with other tabs via BroadcastChannel.
 
 ## Project Structure
 
@@ -97,6 +103,60 @@ Type commands into the input bar or directly in the terminal view.
 ### Other
 
 - `theme <bg> <fg> <border>` — set terminal colors
+
+### Experimental Feature Commands
+
+- `recur <id|#> <n> <unit>` — schedule recurring reminder (`unit` = minute|hour|day|week)
+- `snooze <id|#> <YYYY-MM-DD>` — snooze a task to a new date
+- `aquery <query>` — run an advanced task query (tag/due/done filters)
+- `nrich <id|#> <title>|[body]|[link]` — edit note with rich fields
+- `backup [provider] [upload|download]` — sync data to a sandbox provider
+- `themepreset <json>` — apply a theme preset from JSON
+- `themeexport [name]` — download current theme preset
+- `collab <session>` — join a collaboration channel and broadcast tasks/notes
+
+## Feature Helpers
+
+A global `TerminalListFeatures` object exposes experimental helpers. Invoke these from the browser console.
+
+### Recurring & Snoozeable Reminders
+```js
+TerminalListFeatures.scheduleRecurringReminder(taskId, { every: 1, unit: 'day' });
+TerminalListFeatures.snoozeReminder(taskId, '2024-05-20');
+```
+
+### Advanced Queries
+```js
+// returns matching task IDs
+TerminalListFeatures.parseAdvancedQuery('tag:work due:today done:false');
+```
+
+### Rich Note Editing
+```js
+TerminalListFeatures.editNoteRich(noteId, {
+  title: 'Updated note',
+  attachments: ['https://example.com/file.png'],
+  links: ['note:2']
+});
+```
+
+### Local "Cloud" Backup
+```js
+await TerminalListFeatures.syncWithCloud('local', 'upload');   // save to localStorage sandbox
+await TerminalListFeatures.syncWithCloud('local', 'download'); // restore from sandbox
+```
+
+### Theme Presets
+```js
+TerminalListFeatures.applyThemePreset({ bg:'#000', fg:'#0f0', border:'#0f0' });
+TerminalListFeatures.exportThemePreset('my-theme'); // downloads my-theme.json
+```
+
+### Collaboration Channel
+```js
+const collab = TerminalListFeatures.startCollaboration('session1');
+collab.broadcast(); // sync current tasks/notes to other tabs with same session
+```
 
 ## Security Notes
 
