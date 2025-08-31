@@ -19,6 +19,7 @@ It supports optional passcode protection with AES-256 encryption, JSON export/im
 - ☁️ **Cloud Backup**: Upload or download data to a localStorage sandbox or Google Drive.
 - 🎭 **Theme Presets**: Apply or export theme JSON files for easy sharing.
 - 🤝 **Collaboration Channel**: Share task and note data with other tabs via BroadcastChannel.
+- 📎 **Encrypted Sharing**: Share individual tasks or notes with a passcode-protected payload.
 
 ## Project Structure
 
@@ -79,6 +80,7 @@ Type commands into the input bar or directly in the terminal view.
 - `due <id|#> <YYYY-MM-DD>` — set due date (notifications fire on the due date; or "clear")
 - `priority <id|#> <H|M|L>` — set priority
 - `search <query>` — find text in items
+- `share <id|#>` — share a task encrypted with a passcode
 
 ### Notes
 - `note <title>|<desc>|[link]|[body]` — add a note
@@ -92,12 +94,14 @@ Type commands into the input bar or directly in the terminal view.
 - `nunlink <note|#>` — unlink note from task
 - `ntag <id|#> +foo -bar` — add/remove tags
 - `nsearch <query>` — find text in notes
+- `nshare <id|#>` — share a note encrypted with a passcode
 
 ### Security & Data
 - `stats` — summary counts
 - `clear` — clear the display
 - `export` — download JSON (tasks + notes)
 - `import` — paste JSON to replace all data
+- `importshare` — paste shared item JSON and decrypt with a passcode
 - `wipe` — clear all data (with confirm)
 - `setpass` — set or clear passcode
 - `lock` — clear decrypted data from memory

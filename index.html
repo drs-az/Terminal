@@ -245,6 +245,24 @@
       );
     }
 
+    async function encryptForShare(obj, pass){
+      const saltBytes = crypto.getRandomValues(new Uint8Array(16));
+      const iv = crypto.getRandomValues(new Uint8Array(12));
+      const key = await deriveKey(pass, saltBytes);
+      const data = enc.encode(JSON.stringify(obj));
+      const buf = await crypto.subtle.encrypt({ name:'AES-GCM', iv }, key, data);
+      return { salt: b64(saltBytes), iv: b64(iv), data: b64(buf) };
+    }
+
+    async function decryptShared(encObj, pass){
+      const saltBytes = b64ToBuf(encObj.salt);
+      const iv = b64ToBuf(encObj.iv);
+      const data = b64ToBuf(encObj.data);
+      const key = await deriveKey(pass, saltBytes);
+      const buf = await crypto.subtle.decrypt({ name:'AES-GCM', iv }, key, data);
+      return JSON.parse(dec.decode(new Uint8Array(buf)));
+    }
+
     let passKey = null; // CryptoKey when unlocked
     let passSalt = null; // base64 string
     let locked = false;
@@ -674,6 +692,7 @@
       println('  RECUR <id|#> <n> <unit>  schedule recurring reminder');
       println('  SNOOZE <id|#> <YYYY-MM-DD> snooze reminder');
       println('  AQUERY <query>            advanced task query (tag/due/done/pri)');
+      println('  SHARE <id|#>              share a task encrypted');
       println('Notes:');
       println('  NOTE <title>|<desc>|[link]|[body] add a note');
       println('  NOTES [all|@tag|task:<ref>] list notes');
@@ -687,11 +706,13 @@
       println('  SEEPIC <id|#>            view note image');
       println('  DLPIC <id|#>             download note image');
       println('  NSEARCH <query>           find text in notes');
+      println('  NSHARE <id|#>            share a note encrypted');
       println('Security & Data:');
       println('  STATS                     summary counts');
       println('  CLEAR                     clear the display');
       println('  EXPORT                    download JSON (tasks + notes)');
       println('  IMPORT                    paste JSON to replace all data');
+      println('  IMPORTSHARE              paste shared item JSON to import');
       println('  WIPE                      clear all data (with confirm)');
       println('  SETPASS                   set or clear passcode');
       println('  LOCK                      clear decrypted data from memory');
@@ -870,6 +891,23 @@
       printList(hits, 'ADV QUERY: ' + q);
     };
 
+    cmd.share = async (args)=>{
+      const ref = args[0];
+      const t = resolveTaskRef(ref, lastTaskListCache);
+      if (!t) return println('not found', 'error');
+      println('Enter share passcode:', 'muted');
+      const pass = await getNextLine(true);
+      const encPayload = await encryptForShare(t, pass);
+      const payload = { version:1, type:'item', enc: encPayload };
+      const json = JSON.stringify(payload);
+      if (navigator.share){
+        try { await navigator.share({ text: json }); println('shared.', 'ok'); }
+        catch(e){ println('share canceled.', 'muted'); }
+      } else {
+        println(json, 'muted');
+      }
+    };
+
     // Notes
     let lastNoteListCache = null;
     cmd.note = ()=>{
@@ -940,6 +978,23 @@
       if (!q) return println('usage: NSEARCH <query>', 'error');
       const hits = notes.filter(n=> [n.title, n.description, ...(n.links||[]), n.body || n.text].some(f => (f||'').toLowerCase().includes(q)));
       printNotes(hits, 'SEARCH NOTES: ' + q);
+    };
+
+    cmd.nshare = async (args)=>{
+      const ref = args[0];
+      const n = resolveNoteRef(ref, lastNoteListCache);
+      if (!n) return println('not found', 'error');
+      println('Enter share passcode:', 'muted');
+      const pass = await getNextLine(true);
+      const encPayload = await encryptForShare(n, pass);
+      const payload = { version:1, type:'note', enc: encPayload };
+      const json = JSON.stringify(payload);
+      if (navigator.share){
+        try { await navigator.share({ text: json }); println('shared.', 'ok'); }
+        catch(e){ println('share canceled.', 'muted'); }
+      } else {
+        println(json, 'muted');
+      }
     };
 
     cmd.readnote = (args)=>{
@@ -1043,6 +1098,18 @@
         ntag: [
           'NTAG <id|#> +foo -bar',
           '  Add (+) or remove (-) tags from a note'
+        ],
+        share: [
+          'SHARE <id|#>',
+          '  Share a task encrypted with a passcode'
+        ],
+        nshare: [
+          'NSHARE <id|#>',
+          '  Share a note encrypted with a passcode'
+        ],
+        importshare: [
+          'IMPORTSHARE',
+          '  Paste shared item JSON, then enter its passcode'
         ]
       };
       if (!topic || !info[topic]) {
@@ -1161,6 +1228,31 @@
           throw new Error('invalid format');
         }
         saveItems(items); saveNotes(notes);
+        println('imported.', 'ok');
+      }catch(e){
+        println('import failed: ' + e.message, 'error');
+      }
+    };
+
+    cmd.importshare = async ()=>{
+      println('Paste shared JSON and press Enter. Type CANCEL to abort.', 'muted');
+      const text = await getNextLine();
+      if (text.trim().toLowerCase() === 'cancel'){ println('import canceled.','muted'); return; }
+      try{
+        const payload = JSON.parse(text);
+        if (!payload || !payload.enc || !payload.type) throw new Error('invalid format');
+        println('Enter share passcode:', 'muted');
+        const pass = await getNextLine(true);
+        const obj = await decryptShared(payload.enc, pass);
+        if (payload.type === 'item'){
+          if (!obj.id || items.some(t=>t.id===obj.id)) obj.id = makeId();
+          items.push(obj); saveItems(items);
+        } else if (payload.type === 'note'){
+          if (!obj.id || notes.some(n=>n.id===obj.id)) obj.id = makeId();
+          notes.push(obj); saveNotes(notes);
+        } else {
+          throw new Error('unknown type');
+        }
         println('imported.', 'ok');
       }catch(e){
         println('import failed: ' + e.message, 'error');
