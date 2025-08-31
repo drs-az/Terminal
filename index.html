@@ -312,9 +312,27 @@
     /************
      * FILTER/RESOLUTION
      ************/
-    function listFilteredTasks(filter){
+    function listFilteredTasks(filter, sortBy){
       let arr = [...items];
-      arr.sort((a,b)=>a.createdAt - b.createdAt);
+      if (sortBy === 'due') {
+        arr.sort((a,b)=>{
+          if (!a.due && !b.due) return a.createdAt - b.createdAt;
+          if (!a.due) return 1;
+          if (!b.due) return -1;
+          if (a.due === b.due) return a.createdAt - b.createdAt;
+          return a.due.localeCompare(b.due);
+        });
+      } else if (sortBy === 'pri') {
+        const order = {H:0, M:1, L:2};
+        arr.sort((a,b)=>{
+          const pa = order[a.pri] ?? 3;
+          const pb = order[b.pri] ?? 3;
+          if (pa === pb) return a.createdAt - b.createdAt;
+          return pa - pb;
+        });
+      } else {
+        arr.sort((a,b)=>a.createdAt - b.createdAt);
+      }
       if (!filter || filter==='open') arr = arr.filter(t=>!t.done);
       else if (filter==='done') arr = arr.filter(t=>t.done);
       else if (filter==='all') { }
@@ -365,7 +383,7 @@
     cmd.help = () => {
       println('Tasks:');
       println('  ADD <text>                add a new item');
-      println('  LIST [all|open|done|@tag] list items');
+      println('  LIST [all|open|done|@tag] [--sort=due|pri] list items');
       println('  SHOW <id|#>               show a task with attached notes');
       println('  DONE <id|#>               mark done');
       println('  UNDONE <id|#>             unmark done');
@@ -404,9 +422,15 @@
       println('added.', 'ok'); printTask(t);
     };
     cmd.list = (args)=>{
-      const filter = args[0] || 'open';
-      lastTaskListCache = listFilteredTasks(filter);
-      printList(lastTaskListCache, 'LIST ' + filter.toUpperCase());
+      let filter = 'open';
+      let sortBy = null;
+      if (args[0] && !args[0].startsWith('--')) filter = args[0];
+      const sortArg = args.find(a=>a.startsWith('--sort='));
+      if (sortArg) sortBy = sortArg.slice(7);
+      lastTaskListCache = listFilteredTasks(filter, sortBy);
+      let title = 'LIST ' + filter.toUpperCase();
+      if (sortBy) title += ' SORTED BY ' + sortBy.toUpperCase();
+      printList(lastTaskListCache, title);
     };
     cmd.show = (args)=>{
       const ref = args[0];
