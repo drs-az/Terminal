@@ -263,6 +263,8 @@
       };
     });
     state.notes = notes;
+    // expose notes array for feature helpers
+    window.notes = notes;
     if (needsNoteMigration) saveNotes(notes);
 
     // Service Worker registration and notification timers
@@ -301,7 +303,12 @@
     }
 
     function saveItems(v){ state.items = v; saveState(state); }
-    function saveNotes(v){ state.notes = v; saveState(state); }
+    function saveNotes(v){
+      notes = v;
+      window.notes = v;
+      state.notes = v;
+      saveState(state);
+    }
     const THEME_KEY = 'terminal-theme';
     function applyTheme(t){
       const root = document.documentElement.style;
