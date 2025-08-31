@@ -86,7 +86,7 @@
     .ok{ color: #7fffd4; }
     .task-done{ opacity: 0.7; text-decoration: line-through; }
     /* Modal + Install Help */
-    #modal, #install-help, #note-modal{
+    #modal, #install-help, #note-modal, #pic-modal{
       position: fixed; inset: 0; display: none;
       align-items: center; justify-content: center;
       background: rgba(0,0,0,0.92);
@@ -118,6 +118,7 @@
     #note-attachments-preview .thumb{ display:inline-block; position:relative; margin-right:6px; }
     #note-attachments-preview img{ max-width:64px; max-height:64px; border:1px solid var(--border); }
     #note-attachments-preview .remove{ position:absolute; top:0; right:0; background:var(--bg); color:var(--fg); border:0; cursor:pointer; }
+    #note-attachments-preview.dragover{ outline:2px dashed var(--fg); }
   .cursor {
     display: inline-block;
     width: 10px;
@@ -185,6 +186,18 @@
       <div class="row">
         <button class="terminal" id="note-cancel">Cancel</button>
         <button class="terminal" id="note-save">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="pic-modal" role="dialog" aria-modal="true" aria-labelledby="pic-modal-title">
+    <div class="card">
+      <div id="pic-modal-title" class="line">Image Preview</div>
+      <div class="line" style="text-align:center; margin-top:6px">
+        <img id="pic-modal-img" alt="note image" style="max-width:100%; height:auto;" />
+      </div>
+      <div class="row">
+        <button class="terminal" id="pic-close">Close</button>
       </div>
     </div>
   </div>
@@ -431,14 +444,27 @@
     const noteCancel = document.getElementById('note-cancel');
     const noteSave = document.getElementById('note-save');
     let editingNote = null;
-
-    noteAttachmentsFiles.addEventListener('change', () => {
-      Array.from(noteAttachmentsFiles.files).forEach(file => {
-        if (!file.type.startsWith('image/')) return;
+    const picModal = document.getElementById('pic-modal');
+    const picModalImg = document.getElementById('pic-modal-img');
+    const picClose = document.getElementById('pic-close');
+    let currentPicUrl = '';
+    function showAttachmentError(msg){
+      const err = document.createElement('div');
+      err.className = 'error';
+      err.textContent = msg;
+      noteAttachmentsPreview.appendChild(err);
+      setTimeout(()=>err.remove(),2000);
+    }
+    function handleAttachmentFiles(fileList){
+      Array.from(fileList).forEach(file=>{
+        if (!file.type.startsWith('image/')){
+          showAttachmentError('Unsupported file type');
+          return;
+        }
         const entry = { file, dataUrl: '' };
         pendingAttachmentFiles.push(entry);
         const reader = new FileReader();
-        reader.onload = e => {
+        reader.onload = e=>{
           entry.dataUrl = e.target.result;
           const wrap = document.createElement('div');
           wrap.className = 'thumb';
@@ -448,8 +474,8 @@
           const btn = document.createElement('button');
           btn.textContent = '\u00d7';
           btn.className = 'remove';
-          btn.addEventListener('click', () => {
-            pendingAttachmentFiles = pendingAttachmentFiles.filter(x => x !== entry);
+          btn.addEventListener('click', ()=>{
+            pendingAttachmentFiles = pendingAttachmentFiles.filter(x=>x !== entry);
             wrap.remove();
           });
           wrap.appendChild(btn);
@@ -457,7 +483,34 @@
         };
         reader.readAsDataURL(file);
       });
+    }
+    noteAttachmentsFiles.addEventListener('change', ()=>{
+      handleAttachmentFiles(noteAttachmentsFiles.files);
       noteAttachmentsFiles.value = '';
+    });
+    noteAttachmentsPreview.addEventListener('dragenter', e=>{
+      e.preventDefault();
+      noteAttachmentsPreview.classList.add('dragover');
+    });
+    noteAttachmentsPreview.addEventListener('dragover', e=>{
+      e.preventDefault();
+    });
+    noteAttachmentsPreview.addEventListener('dragleave', e=>{
+      e.preventDefault();
+      noteAttachmentsPreview.classList.remove('dragover');
+    });
+    noteAttachmentsPreview.addEventListener('drop', e=>{
+      e.preventDefault();
+      noteAttachmentsPreview.classList.remove('dragover');
+      if (e.dataTransfer && e.dataTransfer.files.length){
+        handleAttachmentFiles(e.dataTransfer.files);
+      }
+    });
+    noteModal.addEventListener('paste', e=>{
+      if (e.clipboardData && e.clipboardData.files.length){
+        handleAttachmentFiles(e.clipboardData.files);
+        e.preventDefault();
+      }
     });
 
     function println(text, cls){
@@ -629,6 +682,8 @@
       println('  NLINK <note|#> <task|#>   link a note to a task');
       println('  NUNLINK <note|#>          unlink note from task');
       println('  READNOTE <id|#>          show note details');
+      println('  SEEPIC <id|#>            view note image');
+      println('  DLPIC <id|#>             download note image');
       println('  NSEARCH <query>           find text in notes');
       println('Security & Data:');
       println('  STATS                     summary counts');
@@ -901,6 +956,38 @@
       println('Linked Task: ' + (n.taskId || ''));
     };
 
+    cmd.seepic = (args)=>{
+      const ref = args[0];
+      const n = resolveNoteRef(ref, lastNoteListCache);
+      if (!n) return println('not found', 'error');
+      const att = (n.attachments || []).find(isImageAttachment);
+      if (!att) return println('no image attachment', 'error');
+      resolveAttachmentUrl(att).then(url=>{
+        if (!url) return println('failed to load', 'error');
+        showPicModal(url);
+      });
+    };
+
+    cmd.dlpic = (args)=>{
+      const ref = args[0];
+      const n = resolveNoteRef(ref, lastNoteListCache);
+      if (!n) return println('not found', 'error');
+      const att = (n.attachments || []).find(isImageAttachment);
+      if (!att) return println('no image attachment', 'error');
+      resolveAttachmentUrl(att).then(url=>{
+        if (!url) return println('failed to load', 'error');
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'note-' + n.id + '-image';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(()=>{
+          document.body.removeChild(a);
+          if (url.startsWith('blob:')) URL.revokeObjectURL(url);
+        }, 0);
+      });
+    };
+
     // General
     cmd.syntax = (args)=>{
       const topic = (args[0] || '').toLowerCase();
@@ -918,6 +1005,14 @@
           '  Create a note; fields separated by "|".',
           '  link and body are optional.',
           '  Use NRICH to add attachments later.'
+        ],
+        seepic: [
+          'SEEPIC <id|#>',
+          '  Open first image attachment of note in modal'
+        ],
+        dlpic: [
+          'DLPIC <id|#>',
+          '  Download first image attachment of note'
         ]
       };
       if (!topic || !info[topic]) {
@@ -1193,6 +1288,18 @@
       noteAttachmentsFiles.value = '';
       pendingAttachmentFiles = [];
     }
+    function showPicModal(url){
+      currentPicUrl = url;
+      picModalImg.src = url;
+      picModal.style.display = 'flex';
+    }
+    function hidePicModal(){
+      picModal.style.display = 'none';
+      picModalImg.src = '';
+      if (currentPicUrl.startsWith('blob:')) URL.revokeObjectURL(currentPicUrl);
+      currentPicUrl = '';
+    }
+    picClose.addEventListener('click', hidePicModal);
     noteCancel.addEventListener('click', hideNoteModal);
     noteSave.addEventListener('click', async ()=>{
       const title = noteTitleInput.value.trim();

@@ -84,6 +84,8 @@ Type commands into the input bar or directly in the terminal view.
 - `notes [all|@tag|task:<ref>]` — list notes
 - `nedit <id|#> <title>|<desc>|[link]|[body]>` — edit a note
 - `readnote <id|#>` — show all fields for a note
+- `seepic <id|#>` — open a note's image attachment in a modal
+- `dlpic <id|#>` — download a note's image attachment
 - `ndelete <id|#>` — delete a note
 - `nlink <note|#> <task|#>` — link a note to a task
 - `nunlink <note|#>` — unlink note from task
