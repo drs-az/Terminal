@@ -246,6 +246,41 @@
     let items = state.items;
     let notes = state.notes;
 
+    // Service Worker registration and notification timers
+    let swRegistration = null;
+    const dueTimers = new Map();
+
+    async function requestNotificationPermission(){
+      if (!('Notification' in window)) return;
+      if (Notification.permission === 'default'){
+        try{ await Notification.requestPermission(); }catch(e){}
+      }
+    }
+
+    function scheduleTaskNotification(t){
+      // Clear previous timer if any
+      if (dueTimers.has(t.id)){
+        clearTimeout(dueTimers.get(t.id));
+        dueTimers.delete(t.id);
+      }
+      if (!t.due || !swRegistration || Notification.permission !== 'granted') return;
+      const dueTime = new Date(t.due + 'T00:00:00');
+      const delay = dueTime.getTime() - Date.now();
+      if (delay <= 0) return;
+      const timer = setTimeout(()=>{
+        swRegistration.showNotification('Task due', {
+          body: t.text,
+          tag: t.id,
+          data: { id: t.id }
+        });
+      }, delay);
+      dueTimers.set(t.id, timer);
+    }
+
+    function rescheduleAllNotifications(){
+      items.forEach(scheduleTaskNotification);
+    }
+
     function saveItems(v){ state.items = v; saveState(state); }
     function saveNotes(v){ state.notes = v; saveState(state); }
 
@@ -461,6 +496,10 @@
       const t = resolveTaskRef(args[0], lastTaskListCache);
       if (!t) return println('not found', 'error');
       notes.forEach(n=>{ if (n.taskId === t.id) n.taskId = null; });
+      if (dueTimers.has(t.id)){
+        clearTimeout(dueTimers.get(t.id));
+        dueTimers.delete(t.id);
+      }
       items = items.filter(x=>x.id!==t.id); saveItems(items); saveNotes(notes);
       println('deleted.', 'ok');
     };
@@ -518,6 +557,7 @@
       if (val==='clear'){ t.due = null; }
       else { t.due = val; }
       saveItems(items);
+      scheduleTaskNotification(t);
       println('due updated.', 'ok'); printTask(t);
     };
     cmd.priority = (args)=>{
@@ -784,8 +824,10 @@
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('sw.js')
         .then(() => navigator.serviceWorker.ready)
-        .then(() => {
+        .then((reg) => {
+          swRegistration = reg;
           setStatus('Ready');
+          requestNotificationPermission().finally(rescheduleAllNotifications);
         })
         .catch(err => setStatus('SW error'));
     } else {
