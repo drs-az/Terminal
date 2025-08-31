@@ -173,6 +173,8 @@
       <textarea id="note-description" rows="2"></textarea>
       <label for="note-links" class="line">Links</label>
       <input id="note-links" type="text" />
+      <label for="note-attachments" class="line">Attachments</label>
+      <input id="note-attachments" type="text" />
       <label for="note-body" class="line">Body</label>
       <textarea id="note-body" rows="4"></textarea>
       <div class="row">
@@ -281,6 +283,7 @@
         title: n.title || '',
         description: n.description || '',
         links: Array.isArray(n.links) ? n.links : (n.link ? [n.link] : []),
+        attachments: n.attachments || [],
         body: n.body || n.text || '',
         tags: n.tags || [],
         taskId: n.taskId || null,
@@ -371,6 +374,7 @@
     const noteTitleInput = document.getElementById('note-title');
     const noteDescriptionInput = document.getElementById('note-description');
     const noteLinksInput = document.getElementById('note-links');
+    const noteAttachmentsInput = document.getElementById('note-attachments');
     const noteBodyInput = document.getElementById('note-body');
     const noteCancel = document.getElementById('note-cancel');
     const noteSave = document.getElementById('note-save');
@@ -1049,6 +1053,7 @@
       noteTitleInput.value = note ? note.title || '' : '';
       noteDescriptionInput.value = note ? note.description || '' : '';
       noteLinksInput.value = note ? (note.links || []).join(', ') : '';
+      noteAttachmentsInput.value = note ? (note.attachments || []).join(', ') : '';
       noteBodyInput.value = note ? note.body || '' : '';
       noteModal.style.display = 'flex';
       noteTitleInput.focus();
@@ -1066,17 +1071,19 @@
         return;
       }
       const links = noteLinksInput.value.split(',').map(s=>s.trim()).filter(Boolean);
+      const attachments = noteAttachmentsInput.value.split(',').map(s=>s.trim()).filter(Boolean);
       const body = noteBodyInput.value.trim();
       if (editingNote){
         editingNote.title = title;
         editingNote.description = description;
         editingNote.links = links;
+        editingNote.attachments = attachments;
         editingNote.body = body;
         editingNote.updatedAt = Date.now();
         println('note edited.','ok');
         printNote(editingNote);
       }else{
-        const n = { id: makeId(), title, description, links, body, tags:[], taskId:null, createdAt:Date.now(), updatedAt:Date.now() };
+        const n = { id: makeId(), title, description, links, attachments, body, tags:[], taskId:null, createdAt:Date.now(), updatedAt:Date.now() };
         notes.push(n);
         println('note added.','ok');
         printNote(n);
