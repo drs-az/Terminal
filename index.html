@@ -173,7 +173,9 @@
       </div>
     </div>
   </div>
-
+  
+  <script src="https://apis.google.com/js/api.js"></script>
+  <script src="features.js"></script>
   <script>
     /************
      * STORAGE
@@ -463,10 +465,14 @@
       println('  DUE <id|#> <YYYY-MM-DD>   set due date (or "clear")');
       println('  PRIORITY <id|#> <H|M|L>   set priority');
       println('  SEARCH <query>            find text in items');
+      println('  RECUR <id|#> <n> <unit>  schedule recurring reminder');
+      println('  SNOOZE <id|#> <YYYY-MM-DD> snooze reminder');
+      println('  AQUERY <query>            advanced task query (tag/due/done/pri)');
       println('Notes:');
       println('  NOTE <title>|<desc>|[link]|[body] add a note');
       println('  NOTES [all|@tag|task:<ref>] list notes');
       println('  NEDIT <id|#> <title>|<desc>|[link]|[body] edit a note');
+      println('  NRICH <id|#> <title>|[body]|[link] rich edit a note');
       println('  NDELETE <id|#>            delete a note');
       println('  NLINK <note|#> <task|#>   link a note to a task');
       println('  NUNLINK <note|#>          unlink note from task');
@@ -483,6 +489,10 @@
       println('  UNLOCK                    restore data with passcode');
       println('Appearance:');
       println('  THEME <bg> <fg> <border>   set colors');
+      println('  THEMEPRESET <json>        apply theme preset');
+      println('  THEMEEXPORT [name]        export current theme');
+      println('  BACKUP [provider] [upload|download] sync data');
+      println('  COLLAB <session>          start collaboration channel');
     };
 
     let lastTaskListCache = null;
@@ -613,6 +623,37 @@
       printList(hits, 'SEARCH TASKS: ' + q);
     };
 
+    cmd.recur = (args)=>{
+      const ref = args[0];
+      const every = parseInt(args[1], 10);
+      const unit = args[2];
+      const t = resolveTaskRef(ref, lastTaskListCache);
+      if (!t || !every || !unit){
+        return println('usage: RECUR <id|#> <n> <minute|hour|day|week>', 'error');
+      }
+      TerminalListFeatures.scheduleRecurringReminder(t.id, { every, unit });
+      println('recurrence scheduled.', 'ok');
+    };
+
+    cmd.snooze = (args)=>{
+      const t = resolveTaskRef(args[0], lastTaskListCache);
+      const until = args[1];
+      if (!t || !until){
+        return println('usage: SNOOZE <id|#> <YYYY-MM-DD>', 'error');
+      }
+      TerminalListFeatures.snoozeReminder(t.id, until);
+      println('snoozed.', 'ok');
+      printTask(t);
+    };
+
+    cmd.aquery = (args)=>{
+      const q = args.join(' ');
+      if (!q) return println('usage: AQUERY <query>', 'error');
+      const ids = TerminalListFeatures.parseAdvancedQuery(q);
+      const hits = items.filter(t=> ids.includes(t.id));
+      printList(hits, 'ADV QUERY: ' + q);
+    };
+
     // Notes
     let lastNoteListCache = null;
     cmd.note = (args)=>{
@@ -637,6 +678,20 @@
       if (!title || !description) return println('usage: NEDIT <id|#> <title>|<description>|[link]|[body]', 'error');
       n.title = title; n.description = description; n.link = link; n.body = body; n.updatedAt = Date.now(); saveNotes(notes);
       println('note edited.', 'ok'); printNote(n);
+    };
+
+    cmd.nrich = (args)=>{
+      const ref = args.shift();
+      const n = resolveNoteRef(ref, lastNoteListCache);
+      if (!n) return println('not found', 'error');
+      const parts = args.join(' ').split('|').map(s=>s.trim());
+      const [title, body, link] = parts;
+      TerminalListFeatures.editNoteRich(n.id, {
+        title: title || n.title,
+        body: body || n.body,
+        links: link ? [link] : n.links
+      });
+      println('note updated.', 'ok'); printNote(n);
     };
     cmd.ndelete = (args)=>{
       const ref = args[0];
@@ -706,6 +761,41 @@
       applyTheme({ bg, fg, border });
       saveTheme({ bg, fg, border });
       println('theme updated.', 'ok');
+    };
+
+    cmd.themepreset = (args)=>{
+      const json = args.join(' ');
+      if (!json) return println('usage: THEMEPRESET <json>', 'error');
+      try {
+        const preset = JSON.parse(json);
+        TerminalListFeatures.applyThemePreset(preset);
+        println('theme preset applied.', 'ok');
+      } catch(e){
+        println('invalid preset', 'error');
+      }
+    };
+
+    cmd.themeexport = (args)=>{
+      const name = args[0] || 'theme';
+      TerminalListFeatures.exportThemePreset(name);
+      println('theme exported.', 'ok');
+    };
+
+    cmd.backup = (args)=>{
+      const provider = args[0] || 'local';
+      const mode = args[1] || 'upload';
+      TerminalListFeatures.syncWithCloud(provider, mode)
+        .then(()=> println(mode === 'upload' ? 'backup uploaded.' : 'backup restored.', 'ok'))
+        .catch(err => println('backup failed: ' + err, 'error'));
+    };
+
+    let collabSession = null;
+    cmd.collab = (args)=>{
+      const session = args[0];
+      if (!session) return println('usage: COLLAB <session>', 'error');
+      collabSession = TerminalListFeatures.startCollaboration(session);
+      if (collabSession && collabSession.broadcast) collabSession.broadcast();
+      println('collaboration started.', 'ok');
     };
     function download(filename, text) {
       const a = document.createElement('a');
