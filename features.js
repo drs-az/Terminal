@@ -94,22 +94,33 @@ function editNoteRich(noteId, options = {}) {
 
 // --- Cloud Backup / Sync --------------------------------------------------
 
-const GDRIVE_CLIENT_ID = 'YOUR_CLIENT_ID.apps.googleusercontent.com';
-const GDRIVE_API_KEY = 'YOUR_API_KEY';
+const GDRIVE_CLIENT_ID_KEY = 'terminal-list-gdrive-client-id';
+const GDRIVE_API_KEY_KEY = 'terminal-list-gdrive-api-key';
 const GDRIVE_SCOPES = 'https://www.googleapis.com/auth/drive.file';
 let gdriveInitPromise = null;
+
+function getGDriveClientId() {
+  return localStorage.getItem(GDRIVE_CLIENT_ID_KEY);
+}
+
+function getGDriveApiKey() {
+  return localStorage.getItem(GDRIVE_API_KEY_KEY);
+}
 
 function initGDrive() {
   if (!gdriveInitPromise) {
     gdriveInitPromise = new Promise((resolve, reject) => {
-      if (!window.gapi) return reject('gapi-not-loaded');
+      if (!window.gapi) { gdriveInitPromise = null; return reject('gapi-not-loaded'); }
+      const clientId = getGDriveClientId();
+      const apiKey = getGDriveApiKey();
+      if (!clientId || !apiKey) { gdriveInitPromise = null; return reject('gdrive credentials missing'); }
       gapi.load('client:auth2', () => {
         gapi.client.init({
-          apiKey: GDRIVE_API_KEY,
-          clientId: GDRIVE_CLIENT_ID,
+          apiKey,
+          clientId,
           discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'],
           scope: GDRIVE_SCOPES,
-        }).then(() => resolve(), reject);
+        }).then(resolve, err => { gdriveInitPromise = null; reject(err); });
       });
     });
   }
