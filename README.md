@@ -104,6 +104,17 @@ Type commands into the input bar or directly in the terminal view.
 
 - `theme <bg> <fg> <border>` — set terminal colors
 
+### Experimental Feature Commands
+
+- `recur <id|#> <n> <unit>` — schedule recurring reminder (`unit` = minute|hour|day|week)
+- `snooze <id|#> <YYYY-MM-DD>` — snooze a task to a new date
+- `aquery <query>` — run an advanced task query (tag/due/done filters)
+- `nrich <id|#> <title>|[body]|[link]` — edit note with rich fields
+- `backup [provider] [upload|download]` — sync data to a sandbox provider
+- `themepreset <json>` — apply a theme preset from JSON
+- `themeexport [name]` — download current theme preset
+- `collab <session>` — join a collaboration channel and broadcast tasks/notes
+
 ## Feature Helpers
 
 A global `TerminalListFeatures` object exposes experimental helpers. Invoke these from the browser console.
