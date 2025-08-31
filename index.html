@@ -671,11 +671,11 @@
       println('(' + n.id + ')');
       println('Title: ' + (n.title || ''));
       println('Description: ' + (n.description || ''));
-      if (n.link) println('Link: ' + n.link);
-      if (n.body) println('Body: ' + n.body);
+      println('Link: ' + (n.link || ''));
+      println('Body: ' + (n.body || ''));
       const tags = (n.tags||[]).map(t=>'@'+t).join(' ');
-      if (tags) println('Tags: ' + tags);
-      if (n.taskId) println('Linked Task: ' + n.taskId);
+      println('Tags: ' + tags);
+      println('Linked Task: ' + (n.taskId || ''));
     };
 
     // General
