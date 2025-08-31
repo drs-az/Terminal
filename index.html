@@ -86,7 +86,7 @@
     .ok{ color: #7fffd4; }
     .task-done{ opacity: 0.7; text-decoration: line-through; }
     /* Modal + Install Help */
-    #modal, #install-help, #note-modal{
+    #modal, #install-help, #note-modal, #pic-modal{
       position: fixed; inset: 0; display: none;
       align-items: center; justify-content: center;
       background: rgba(0,0,0,0.92);
@@ -186,6 +186,18 @@
       <div class="row">
         <button class="terminal" id="note-cancel">Cancel</button>
         <button class="terminal" id="note-save">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="pic-modal" role="dialog" aria-modal="true" aria-labelledby="pic-modal-title">
+    <div class="card">
+      <div id="pic-modal-title" class="line">Image Preview</div>
+      <div class="line" style="text-align:center; margin-top:6px">
+        <img id="pic-modal-img" alt="note image" style="max-width:100%; height:auto;" />
+      </div>
+      <div class="row">
+        <button class="terminal" id="pic-close">Close</button>
       </div>
     </div>
   </div>
@@ -432,6 +444,11 @@
     const noteCancel = document.getElementById('note-cancel');
     const noteSave = document.getElementById('note-save');
     let editingNote = null;
+    const picModal = document.getElementById('pic-modal');
+    const picModalImg = document.getElementById('pic-modal-img');
+    const picClose = document.getElementById('pic-close');
+    let currentPicUrl = '';
+
     function showAttachmentError(msg){
       const err = document.createElement('div');
       err.className = 'error';
@@ -666,6 +683,8 @@
       println('  NLINK <note|#> <task|#>   link a note to a task');
       println('  NUNLINK <note|#>          unlink note from task');
       println('  READNOTE <id|#>          show note details');
+      println('  SEEPIC <id|#>            view note image');
+      println('  DLPIC <id|#>             download note image');
       println('  NSEARCH <query>           find text in notes');
       println('Security & Data:');
       println('  STATS                     summary counts');
@@ -938,6 +957,38 @@
       println('Linked Task: ' + (n.taskId || ''));
     };
 
+    cmd.seepic = (args)=>{
+      const ref = args[0];
+      const n = resolveNoteRef(ref, lastNoteListCache);
+      if (!n) return println('not found', 'error');
+      const att = (n.attachments || []).find(isImageAttachment);
+      if (!att) return println('no image attachment', 'error');
+      resolveAttachmentUrl(att).then(url=>{
+        if (!url) return println('failed to load', 'error');
+        showPicModal(url);
+      });
+    };
+
+    cmd.dlpic = (args)=>{
+      const ref = args[0];
+      const n = resolveNoteRef(ref, lastNoteListCache);
+      if (!n) return println('not found', 'error');
+      const att = (n.attachments || []).find(isImageAttachment);
+      if (!att) return println('no image attachment', 'error');
+      resolveAttachmentUrl(att).then(url=>{
+        if (!url) return println('failed to load', 'error');
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'note-' + n.id + '-image';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(()=>{
+          document.body.removeChild(a);
+          if (url.startsWith('blob:')) URL.revokeObjectURL(url);
+        }, 0);
+      });
+    };
+
     // General
     cmd.syntax = (args)=>{
       const topic = (args[0] || '').toLowerCase();
@@ -955,6 +1006,14 @@
           '  Create a note; fields separated by "|".',
           '  link and body are optional.',
           '  Use NRICH to add attachments later.'
+        ],
+        seepic: [
+          'SEEPIC <id|#>',
+          '  Open first image attachment of note in modal'
+        ],
+        dlpic: [
+          'DLPIC <id|#>',
+          '  Download first image attachment of note'
         ]
       };
       if (!topic || !info[topic]) {
@@ -1230,6 +1289,18 @@
       noteAttachmentsFiles.value = '';
       pendingAttachmentFiles = [];
     }
+    function showPicModal(url){
+      currentPicUrl = url;
+      picModalImg.src = url;
+      picModal.style.display = 'flex';
+    }
+    function hidePicModal(){
+      picModal.style.display = 'none';
+      picModalImg.src = '';
+      if (currentPicUrl.startsWith('blob:')) URL.revokeObjectURL(currentPicUrl);
+      currentPicUrl = '';
+    }
+    picClose.addEventListener('click', hidePicModal);
     noteCancel.addEventListener('click', hideNoteModal);
     noteSave.addEventListener('click', async ()=>{
       const title = noteTitleInput.value.trim();
