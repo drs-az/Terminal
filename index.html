@@ -249,7 +249,7 @@
 
   <script type="module" src="features.js"></script>
   <script type="module">
-    import { scheduleRecurringReminder, clearRecurringReminder, snoozeReminder, parseAdvancedQuery, applyThemePreset, exportThemePreset, setGDriveCredentials, syncWithCloud, startCollaboration, recurringTimers } from './features.js';
+    import { scheduleRecurringReminder, clearRecurringReminder, snoozeReminder, parseAdvancedQuery, applyThemePreset, exportThemePreset, setGDriveCredentials, syncWithCloud, startCollaboration, recurringTimers, indexItems } from './features.js';
     /************
      * STORAGE
      ************/
@@ -341,6 +341,7 @@
 
     let state = loadState();
     let items = state.items;
+    indexItems(items);
     let needsNoteMigration = false;
     let notes = state.notes.map(n=>{
       if (!n.body && n.text) needsNoteMigration = true;
@@ -401,7 +402,7 @@
       items.forEach(scheduleTaskNotification);
     }
 
-    function saveItems(v){ state.items = v; saveState(state); }
+    function saveItems(v){ state.items = v; indexItems(v); saveState(state); }
     function saveNotes(v){
       notes = v;
       window.notes = v;
