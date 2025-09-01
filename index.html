@@ -783,6 +783,7 @@
       println('  MSGS                     list messages');
       println('  SENDMSG                  compose and share a message');
       println('  RECMSG                   receive a shared message');
+      println('  READMSG <id|#>          read a message');
       println('  REPLYMSG <id|#>          reply to a message');
       println('  DELMSG <id|#>           delete a message');
       println('Security & Data:');
@@ -1175,6 +1176,24 @@
         println('import failed: ' + e.message, 'error');
       }
     };
+    cmd.readmsg = (args)=>{
+      const ref = args[0];
+      const m = resolveMessageRef(ref, lastMsgListCache);
+      if (!m) return println('not found', 'error');
+      println('(' + m.id + ')');
+      println('From: ' + (m.from || ''));
+      println('To: ' + (m.to || ''));
+      println('Subject: ' + (m.subject || ''));
+      println('Date: ' + (m.date || '') + ' ' + (m.time || ''));
+      println('Message: ' + (m.message || ''));
+      const div = document.createElement('div');
+      div.className = 'line';
+      const btn = document.createElement('button');
+      btn.textContent = 'Reply';
+      btn.addEventListener('click', ()=>parseAndRun('REPLYMSG ' + m.id));
+      div.appendChild(btn);
+      output.appendChild(div);
+    };
     cmd.replymsg = (args)=>{
       const ref = args[0];
       const m = resolveMessageRef(ref, lastMsgListCache);
@@ -1239,6 +1258,10 @@
         recmsg: [
           'RECMSG',
           '  Paste shared message JSON, then enter its passcode'
+        ],
+        readmsg: [
+          'READMSG <id|#>',
+          '  Read a message'
         ],
         replymsg: [
           'REPLYMSG <id|#>',
