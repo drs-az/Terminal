@@ -37,13 +37,17 @@ Terminal-List/
 
 ## Build
 
-Generate the asset manifest and cache version before deployment:
+Generate the asset manifest, runtime config, and cache version before deployment:
 
 ```bash
+GDRIVE_CLIENT_ID=<your_client_id> \
+GDRIVE_API_KEY=<your_api_key> \
 node build-manifest.js
 ```
 
-This script hashes core assets, writes `asset-manifest.js`, and updates the cache version used by `sw.js`.
+`build-manifest.js` hashes core assets, writes `asset-manifest.js`, and creates a `config.json` file using the `GDRIVE_CLIENT_ID` and `GDRIVE_API_KEY` environment variables. The service worker uses the manifest's version for cache busting.
+
+`config.json` is ignored by Git; see `config.template.json` for the expected structure. The app fetches this file at runtime to supply Google Drive credentials to `setGDriveCredentials`.
 
 ## Installation / Running
 
@@ -181,7 +185,7 @@ await syncWithCloud('local', 'download'); // restore from sandbox
 ```
 
 ### Google Drive Backup
-Run inside the app:
+`clientId` and `apiKey` are read from `config.json` at startup. To supply them manually, run inside the app:
 ```
 GDRIVECONFIG <client_id> <api_key>
 ```
