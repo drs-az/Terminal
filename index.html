@@ -252,6 +252,19 @@
   <script type="module" src="features.js"></script>
   <script type="module">
     import { scheduleRecurringReminder, clearRecurringReminder, snoozeReminder, parseAdvancedQuery, applyThemePreset, exportThemePreset, setGDriveCredentials, syncWithCloud, startCollaboration, recurringTimers, indexItems } from './features.js';
+
+    // Load Google Drive credentials from config.json at runtime
+    fetch('./config.json')
+      .then(r => r.json())
+      .then(cfg => {
+        if (cfg.clientId && cfg.apiKey) {
+          setGDriveCredentials(cfg.clientId, cfg.apiKey);
+        }
+      })
+      .catch(() => {
+        // Missing or invalid config: credentials can be set manually via GDRIVECONFIG
+      });
+
     /************
      * STORAGE
      ************/
