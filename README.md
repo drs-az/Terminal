@@ -18,7 +18,7 @@ It supports optional passcode protection with AES-256 encryption, JSON export/im
 - ✨ **Rich Note Editing**: Add attachments, links, or formatted text to notes.
 - ☁️ **Cloud Backup**: Upload or download data to a localStorage sandbox or Google Drive.
 - 🎭 **Theme Presets**: Apply or export theme JSON files for easy sharing.
-- 🤝 **Collaboration Channel**: Share task and note data with other tabs via BroadcastChannel.
+  - 🤝 **Collaboration Channel**: Share encrypted task and note data with other tabs via BroadcastChannel using a shared secret.
 - ✉️ **Messages**: Compose, share, and receive encrypted messages.
 - 📎 **Encrypted Sharing**: Share individual tasks, notes, or messages with a passcode-protected payload.
 
@@ -185,8 +185,8 @@ TerminalListFeatures.exportThemePreset('my-theme'); // downloads my-theme.json
 
 ### Collaboration Channel
 ```js
-const collab = TerminalListFeatures.startCollaboration('session1');
-collab.broadcast(); // sync current tasks/notes to other tabs with same session
+const collab = TerminalListFeatures.startCollaboration('session1', 'shared-secret');
+await collab.broadcast(); // sync current tasks/notes to other tabs with same session and secret
 ```
 
 ## Security Notes
