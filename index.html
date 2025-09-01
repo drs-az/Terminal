@@ -378,6 +378,13 @@
       }
     }
 
+    function clearAllTimers(){
+      for(const timer of dueTimers.values()) clearTimeout(timer);
+      dueTimers.clear();
+      for(const timer of recurringTimers.values()) clearInterval(timer);
+      recurringTimers.clear();
+    }
+
     function scheduleTaskNotification(t){
       // Clear previous timer if any
       if (dueTimers.has(t.id)){
@@ -400,6 +407,18 @@
 
     function rescheduleAllNotifications(){
       items.forEach(scheduleTaskNotification);
+    }
+
+    document.addEventListener('visibilitychange', ()=>{
+      if (document.visibilityState === 'hidden') clearAllTimers();
+    });
+
+    window.addEventListener('beforeunload', clearAllTimers);
+
+    if (navigator.serviceWorker) {
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (!navigator.serviceWorker.controller) clearAllTimers();
+      });
     }
 
     function saveItems(v){ state.items = v; indexItems(v); saveState(state); }
@@ -932,6 +951,9 @@
       else { t.due = val; }
       saveItems(items);
       scheduleTaskNotification(t);
+      if ('Notification' in window && Notification.permission === 'default') {
+        requestNotificationPermission().then(rescheduleAllNotifications);
+      }
       println('due updated.', 'ok'); printTask(t);
     };
     cmd.priority = (args)=>{
@@ -959,6 +981,9 @@
         return println('usage: RECUR <id|#> <n> <minute|hour|day|week>', 'error');
       }
       scheduleRecurringReminder(t.id, { every, unit });
+      if ('Notification' in window && Notification.permission === 'default') {
+        requestNotificationPermission().then(rescheduleAllNotifications);
+      }
       println('recurrence scheduled.', 'ok');
     };
 
@@ -969,6 +994,9 @@
         return println('usage: SNOOZE <id|#> <YYYY-MM-DD>', 'error');
       }
       snoozeReminder(t.id, until);
+      if ('Notification' in window && Notification.permission === 'default') {
+        requestNotificationPermission().then(rescheduleAllNotifications);
+      }
       println('snoozed.', 'ok');
       printTask(t);
     };
@@ -1726,7 +1754,7 @@
         .then((reg) => {
           swRegistration = reg;
           setStatus('Ready');
-          requestNotificationPermission().finally(rescheduleAllNotifications);
+          rescheduleAllNotifications();
         })
         .catch(err => setStatus('SW error'));
     } else {
