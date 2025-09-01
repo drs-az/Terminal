@@ -18,7 +18,7 @@ It supports optional passcode protection with AES-256 encryption, JSON export/im
 - ✨ **Rich Note Editing**: Add attachments, links, or formatted text to notes.
 - ☁️ **Cloud Backup**: Upload or download data to a localStorage sandbox or Google Drive.
 - 🎭 **Theme Presets**: Apply or export theme JSON files for easy sharing.
-  - 🤝 **Collaboration Channel**: Share encrypted task and note data with other tabs via BroadcastChannel using a shared secret.
+- 🤝 **Collaboration Channel**: Share encrypted task and note data with other tabs via BroadcastChannel using a shared secret.
 - ✉️ **Messages**: Compose, share, and receive encrypted messages.
 - 📎 **Encrypted Sharing**: Share individual tasks, notes, or messages with a passcode-protected payload.
 
@@ -26,10 +26,17 @@ It supports optional passcode protection with AES-256 encryption, JSON export/im
 
 ```
 Terminal-List/
- ├── index.html              # Main app UI and logic
+ ├── index.html              # PWA shell and UI
+ ├── app.js                  # Core application logic
  ├── features.js             # Feature helpers (recurring reminders, cloud sync, etc.)
+ ├── collaboration.js        # Encrypted BroadcastChannel syncing
+ ├── encryption.js           # AES-256-GCM helpers
+ ├── sanitize.js             # Minimal HTML sanitizer
+ ├── build-manifest.js       # Generates asset manifest and config.json
+ ├── asset-manifest.js       # Generated list of cached assets
  ├── manifest.webmanifest    # PWA manifest file
  ├── sw.js                   # Service worker for offline support
+ ├── config.template.json    # Template for runtime config (copy to config.json)
  └── icons/                  # App icons
       ├── icon-192.png
       └── icon-512.png
