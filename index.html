@@ -1455,8 +1455,8 @@
     cmd.lock = ()=>{
       if (locked){ println('already locked','muted'); return; }
       if (!passSalt){ println('no passcode set','error'); return; }
-      items = []; notes = [];
-      state.items = items; state.notes = notes;
+      items = []; notes = []; messages = [];
+      state.items = items; state.notes = notes; state.messages = messages;
       passKey = null;
       locked = true;
       lastTaskListCache = null; lastNoteListCache = null;
