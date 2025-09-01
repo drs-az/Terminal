@@ -254,6 +254,7 @@
      ************/
     const STORE_KEY_V2 = 'terminal-list-state-v2'; // {items:[], notes:[], messages:[]} or {version,enc:{}}
     const STORE_KEY_V1 = 'terminal-list-items-v1'; // legacy items-only
+    const PASS_DECLINED_KEY = 'terminal-pass-declined-v1';
 
     const enc = new TextEncoder();
     const dec = new TextDecoder();
@@ -291,6 +292,8 @@
     let passKey = null; // CryptoKey when unlocked
     let passSalt = null; // base64 string
     let locked = false;
+    let passDeclined = localStorage.getItem(PASS_DECLINED_KEY) === '1';
+    let savingBlocked = !passDeclined;
 
     function loadState(){
       try{
@@ -320,6 +323,7 @@
       return { items: [], notes: [], messages: [] };
     }
     async function saveState(state){
+      if (savingBlocked) return;
       try{
         if (passKey){
           const iv = crypto.getRandomValues(new Uint8Array(12));
@@ -355,6 +359,7 @@
     state.notes = notes;
     // expose notes array for feature helpers
     window.notes = notes;
+    savingBlocked = !passSalt && !passDeclined;
     if (needsNoteMigration) saveNotes(notes);
     let messages = state.messages || [];
     state.messages = messages;
@@ -795,6 +800,7 @@
       println('  IMPORTSHARE              paste shared item JSON to import');
       println('  WIPE                      clear all data (with confirm)');
       println('  SETPASS                   set or clear passcode');
+      println('  NOPASS                    save without passcode');
       println('  LOCK                      clear decrypted data from memory');
       println('  UNLOCK                    restore data with passcode');
       println('Appearance:');
@@ -1441,6 +1447,9 @@
       const pass = await getNextLine(true);
       if (!pass){
         passKey = null; passSalt = null;
+        localStorage.setItem(PASS_DECLINED_KEY, '1');
+        passDeclined = true;
+        savingBlocked = false;
         await saveState(state);
         println('passcode cleared.', 'ok');
         return;
@@ -1448,8 +1457,20 @@
       const saltBytes = crypto.getRandomValues(new Uint8Array(16));
       passSalt = b64(saltBytes);
       passKey = await deriveKey(pass, saltBytes);
+      localStorage.removeItem(PASS_DECLINED_KEY);
+      passDeclined = false;
+      savingBlocked = false;
       await saveState(state);
       println('passcode set.', 'ok');
+    };
+
+    cmd.nopass = ()=>{
+      if (passSalt){ println('passcode already set','muted'); return; }
+      localStorage.setItem(PASS_DECLINED_KEY, '1');
+      passDeclined = true;
+      savingBlocked = false;
+      saveState(state);
+      println('saving without passcode.', 'ok');
     };
 
     cmd.lock = ()=>{
@@ -1772,7 +1793,7 @@
       println('Type HELP for tasks, notes, and messages commands.');
       localStorage.setItem('terminal-list-initialized-v4','1');
     }
-    if (!passSalt) println('No passcode set. Use SETPASS to protect stored data.', 'error');
+    if (!passSalt && !passDeclined) println('No passcode set. Use SETPASS to protect stored data or NOPASS to save unencrypted. Saving disabled until a choice is made.', 'error');
     if (locked) println('Data is locked. Type UNLOCK to access.', 'muted');
 
     // Focus on output tap

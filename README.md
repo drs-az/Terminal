@@ -7,7 +7,7 @@ It supports optional passcode protection with AES-256 encryption, JSON export/im
 
 - ✅ **Tasks**: Add items, tag them, set priorities or due dates, and search.
 - 📝 **Notes**: Create standalone notes or link them to tasks, and tag them.
-- 🔐 **Passcode Lock**: Protect your data with AES-256-GCM encryption (derived with PBKDF2).
+- 🔐 **Passcode Lock**: Protect your data with AES-256-GCM encryption (derived with PBKDF2). Saving is blocked until you set a passcode or explicitly opt out with `nopass`.
 - ⏰ **Due-date Notifications**: Receive reminders for tasks on their due date (requires notification permission).
 - 🎨 **Custom Themes**: Adjust terminal colors with the `THEME` command.
 - 📤 **Export/Import**: Backup or restore tasks, notes, and messages in JSON format.
@@ -113,6 +113,7 @@ Type commands into the input bar or directly in the terminal view.
 - `importshare` — paste shared item JSON and decrypt with a passcode
 - `wipe` — clear all data (with confirm)
 - `setpass` — set or clear passcode
+- `nopass` — allow saving without a passcode
 - `lock` — clear decrypted data from memory
 - `unlock` — restore data with passcode
 
@@ -191,8 +192,8 @@ await collab.broadcast(); // sync current tasks/notes to other tabs with same se
 
 ## Security Notes
 
-- If no passcode is set, data is saved in browser localStorage unencrypted.
-- On startup, the app warns you when no passcode exists and recommends running `setpass` to protect your data.
+- On startup, the app blocks saving until you run `setpass` or explicitly decline with `nopass`.
+- If `nopass` is used, data is saved in browser localStorage unencrypted.
 - If a passcode is set, all data is encrypted at rest using AES-256-GCM.
 - Passcode derivation uses PBKDF2 with 200k iterations.
 - Remember your passcode! Without it, encrypted data cannot be recovered.
