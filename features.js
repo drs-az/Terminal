@@ -253,24 +253,53 @@ function exportThemePreset(name = 'theme') {
 
 // --- Collaboration -------------------------------------------------------
 
-function startCollaboration(sessionId, secret) {
+function startCollaboration(sessionId, secret, saltBytes) {
   const channel = new BroadcastChannel(`tl-collab-${sessionId}`);
   const encoder = new TextEncoder();
   const decoder = new TextDecoder();
+  let salt = saltBytes ? new Uint8Array(saltBytes) : null;
+  let keyPromise = null;
+
+  function showSalt() {
+    if (!salt) return;
+    const hex = Array.from(salt).map(b => b.toString(16).padStart(2, '0')).join('');
+    console.log('Collaboration salt:', hex);
+  }
 
   async function getKey() {
     if (!secret) throw new Error('secret-required');
-    return crypto.subtle.importKey(
-      'raw',
-      encoder.encode(secret),
-      'AES-GCM',
-      false,
-      ['encrypt', 'decrypt']
-    );
+    if (!salt) {
+      salt = crypto.getRandomValues(new Uint8Array(16));
+      channel.postMessage({ salt: Array.from(salt) });
+      showSalt();
+    }
+    if (!keyPromise) {
+      const baseKey = await crypto.subtle.importKey(
+        'raw',
+        encoder.encode(secret),
+        { name: 'PBKDF2' },
+        false,
+        ['deriveKey']
+      );
+      keyPromise = crypto.subtle.deriveKey(
+        { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+        baseKey,
+        { name: 'AES-GCM', length: 256 },
+        false,
+        ['encrypt', 'decrypt']
+      );
+    }
+    return keyPromise;
   }
 
   channel.onmessage = async e => {
     try {
+      if (e.data && e.data.salt && !salt) {
+        salt = new Uint8Array(e.data.salt);
+        showSalt();
+        await getKey();
+        return;
+      }
       const key = await getKey();
       const { cipher, iv } = e.data || {};
       if (!cipher || !iv) return;
@@ -306,7 +335,7 @@ function startCollaboration(sessionId, secret) {
     channel.postMessage({ cipher: Array.from(new Uint8Array(encrypted)), iv: Array.from(iv) });
   }
 
-  return { channel, broadcast };
+  return { channel, broadcast, getSalt: () => Array.from(salt || []) };
 }
 
 // Expose features for external use
