@@ -489,27 +489,33 @@ function resolveTaskRef(ref, currentList){
   if (!ref) return null;
   const byId = items.find(t=>t.id === ref);
   if (byId) return byId;
-  const n = parseInt(ref,10);
-  if (!isNaN(n) && currentList && n>=1 && n<=currentList.length) return currentList[n-1];
-  if (!isNaN(n) && n>=1 && n<=items.length) return items[n-1];
+  if (/^\d+$/.test(ref)){
+    const n = parseInt(ref,10);
+    if (currentList && n>=1 && n<=currentList.length) return currentList[n-1];
+    if (n>=1 && n<=items.length) return items[n-1];
+  }
   return null;
 }
 function resolveNoteRef(ref, currentList){
   if (!ref) return null;
   const byId = notes.find(n=>n.id === ref);
   if (byId) return byId;
-  const n = parseInt(ref,10);
-  if (!isNaN(n) && currentList && n>=1 && n<=currentList.length) return currentList[n-1];
-  if (!isNaN(n) && n>=1 && n<=notes.length) return notes[n-1];
+  if (/^\d+$/.test(ref)){
+    const n = parseInt(ref,10);
+    if (currentList && n>=1 && n<=currentList.length) return currentList[n-1];
+    if (n>=1 && n<=notes.length) return notes[n-1];
+  }
   return null;
 }
 function resolveMessageRef(ref, currentList){
   if (!ref) return null;
   const byId = messages.find(m=>m.id === ref);
   if (byId) return byId;
-  const n = parseInt(ref,10);
-  if (!isNaN(n) && currentList && n>=1 && n<=currentList.length) return currentList[n-1];
-  if (!isNaN(n) && n>=1 && n<=messages.length) return messages[n-1];
+  if (/^\d+$/.test(ref)){
+    const n = parseInt(ref,10);
+    if (currentList && n>=1 && n<=currentList.length) return currentList[n-1];
+    if (n>=1 && n<=messages.length) return messages[n-1];
+  }
   return null;
 }
 
@@ -611,7 +617,7 @@ cmd.list = (args)=>{
 cmd.show = (args)=>{
   const ref = args[0];
   const t = resolveTaskRef(ref, lastTaskListCache);
-  if (!t) return println('not found', 'error');
+  if (!t) return println('id does not exist', 'error');
   printTask(t);
   const attached = notes.filter(n=>n.taskId === t.id);
   if (attached.length){
@@ -623,19 +629,19 @@ cmd.show = (args)=>{
 };
 cmd.done = (args)=>{
   const t = resolveTaskRef(args[0], lastTaskListCache);
-  if (!t) return println('not found', 'error');
+  if (!t) return println('id does not exist', 'error');
   t.done = true; t.doneAt = Date.now(); saveItems(items);
   println('marked done.', 'ok'); printTask(t);
 };
 cmd.undone = (args)=>{
   const t = resolveTaskRef(args[0], lastTaskListCache);
-  if (!t) return println('not found', 'error');
+  if (!t) return println('id does not exist', 'error');
   t.done = false; t.doneAt = null; saveItems(items);
   println('marked undone.', 'ok'); printTask(t);
 };
 cmd.delete = (args)=>{
   const t = resolveTaskRef(args[0], lastTaskListCache);
-  if (!t) return println('not found', 'error');
+  if (!t) return println('id does not exist', 'error');
   clearRecurringReminder(t.id);
   notes.forEach(n=>{ if (n.taskId === t.id) n.taskId = null; });
   if (dueTimers.has(t.id)){
@@ -648,7 +654,7 @@ cmd.delete = (args)=>{
 cmd.edit = (args)=>{
   const ref = args.shift();
   const t = resolveTaskRef(ref, lastTaskListCache);
-  if (!t) return println('not found', 'error');
+  if (!t) return println('id does not exist', 'error');
   clearRecurringReminder(t.id);
   const text = args.join(' ').trim();
   if (!text) return println('usage: EDIT <id|#> <text>', 'error');
@@ -658,7 +664,7 @@ cmd.edit = (args)=>{
 cmd.move = (args)=>{
   const ref = args[0]; const how = args[1];
   const t = resolveTaskRef(ref, lastTaskListCache);
-  if (!t) return println('not found', 'error');
+  if (!t) return println('id does not exist', 'error');
   const idx = items.findIndex(x=>x.id===t.id);
   if (how === 'up' && idx>0){
     [items[idx-1], items[idx]] = [items[idx], items[idx-1]];
@@ -677,7 +683,7 @@ cmd.move = (args)=>{
 cmd.tag = (args)=>{
   const ref = args.shift();
   const t = resolveTaskRef(ref, lastTaskListCache);
-  if (!t) return println('not found', 'error');
+  if (!t) return println('id does not exist', 'error');
   t.tags = t.tags || [];
   for (const tok of args){
     if (tok.startsWith('+')){
@@ -694,7 +700,7 @@ cmd.tag = (args)=>{
 cmd.due = (args)=>{
   const ref = args.shift();
   const t = resolveTaskRef(ref, lastTaskListCache);
-  if (!t) return println('not found', 'error');
+  if (!t) return println('id does not exist', 'error');
   const val = (args[0]||'').toLowerCase();
   if (!val) return println('usage: DUE <id|#> <YYYY-MM-DD|clear>', 'error');
   if (val==='clear'){ t.due = null; }
@@ -709,7 +715,7 @@ cmd.due = (args)=>{
 cmd.priority = (args)=>{
   const ref = args.shift();
   const t = resolveTaskRef(ref, lastTaskListCache);
-  if (!t) return println('not found', 'error');
+  if (!t) return println('id does not exist', 'error');
   const p = (args[0]||'').toUpperCase();
   if (!['H','M','L'].includes(p)) return println('usage: PRIORITY <id|#> <H|M|L>', 'error');
   t.pri = p; saveItems(items);
@@ -762,7 +768,7 @@ cmd.aquery = (args)=>{
 cmd.share = async (args)=>{
   const ref = args[0];
   const t = resolveTaskRef(ref, lastTaskListCache);
-  if (!t) return println('not found', 'error');
+  if (!t) return println('id does not exist', 'error');
   println('Enter share passcode:', 'muted');
   const pass = await getNextLine(true);
   const { encryptForShare } = await loadEncryption();
@@ -790,20 +796,20 @@ cmd.notes = (args)=>{
 cmd.nedit = (args)=>{
   const ref = args.shift();
   const n = resolveNoteRef(ref, lastNoteListCache);
-  if (!n) return println('not found', 'error');
+  if (!n) return println('id does not exist', 'error');
   showNoteModal(n);
 };
 
 cmd.nrich = (args)=>{
   const ref = args.shift();
   const n = resolveNoteRef(ref, lastNoteListCache);
-  if (!n) return println('not found', 'error');
+  if (!n) return println('id does not exist', 'error');
   showNoteModal(n);
 };
 cmd.ndelete = (args)=>{
   const ref = args[0];
   const n = resolveNoteRef(ref, lastNoteListCache);
-  if (!n) return println('not found', 'error');
+  if (!n) return println('id does not exist', 'error');
   notes = notes.filter(x=>x.id!==n.id); saveNotes(notes);
   println('note deleted.', 'ok');
 };
@@ -813,21 +819,21 @@ cmd.nlink = (args)=>{
   if (!noteRef || !taskRef) return println('usage: NLINK <note|#> <task|#>', 'error');
   const n = resolveNoteRef(noteRef, lastNoteListCache);
   const t = resolveTaskRef(taskRef, lastTaskListCache);
-  if (!n || !t) return println('not found', 'error');
+  if (!n || !t) return println('id does not exist', 'error');
   n.taskId = t.id; n.updatedAt = Date.now(); saveNotes(notes);
   println('note linked.', 'ok'); printNote(n);
 };
 cmd.nunlink = (args)=>{
   const noteRef = args[0];
   const n = resolveNoteRef(noteRef, lastNoteListCache);
-  if (!n) return println('not found', 'error');
+  if (!n) return println('id does not exist', 'error');
   n.taskId = null; n.updatedAt = Date.now(); saveNotes(notes);
   println('note unlinked.', 'ok'); printNote(n);
 };
 cmd.ntag = (args)=>{
   const ref = args.shift();
   const n = resolveNoteRef(ref, lastNoteListCache);
-  if (!n) return println('not found', 'error');
+  if (!n) return println('id does not exist', 'error');
   n.tags = n.tags || [];
   for (const tok of args){
     if (tok.startsWith('+')){
@@ -852,7 +858,7 @@ cmd.nsearch = (args)=>{
 cmd.nshare = async (args)=>{
   const ref = args[0];
   const n = resolveNoteRef(ref, lastNoteListCache);
-  if (!n) return println('not found', 'error');
+  if (!n) return println('id does not exist', 'error');
   println('Enter share passcode:', 'muted');
   const pass = await getNextLine(true);
   const { encryptForShare } = await loadEncryption();
@@ -870,7 +876,7 @@ cmd.nshare = async (args)=>{
 cmd.readnote = (args)=>{
   const ref = args[0];
   const n = resolveNoteRef(ref, lastNoteListCache);
-  if (!n) return println('not found', 'error');
+  if (!n) return println('id does not exist', 'error');
   println('(' + n.id + ')');
   println('Title: ' + (n.title || ''));
   println('Description: ' + (n.description || ''));
@@ -910,7 +916,7 @@ cmd.readnote = (args)=>{
 cmd.seepic = (args)=>{
   const ref = args[0];
   const n = resolveNoteRef(ref, lastNoteListCache);
-  if (!n) return println('not found', 'error');
+  if (!n) return println('id does not exist', 'error');
   const att = (n.attachments || []).find(isImageAttachment);
   if (!att) return println('no image attachment', 'error');
   resolveAttachmentUrl(att).then(url=>{
@@ -922,7 +928,7 @@ cmd.seepic = (args)=>{
 cmd.dlpic = (args)=>{
   const ref = args[0];
   const n = resolveNoteRef(ref, lastNoteListCache);
-  if (!n) return println('not found', 'error');
+  if (!n) return println('id does not exist', 'error');
   const att = (n.attachments || []).find(isImageAttachment);
   if (!att) return println('no image attachment', 'error');
   resolveAttachmentUrl(att).then(url=>{
@@ -972,7 +978,7 @@ cmd.recmsg = async ()=>{
 cmd.readmsg = (args)=>{
   const ref = args[0];
   const m = resolveMessageRef(ref, lastMsgListCache);
-  if (!m) return println('not found', 'error');
+  if (!m) return println('id does not exist', 'error');
   println('(' + m.id + ')');
   println('From: ' + (m.from || ''));
   println('To: ' + (m.to || ''));
@@ -990,13 +996,13 @@ cmd.readmsg = (args)=>{
 cmd.replymsg = (args)=>{
   const ref = args[0];
   const m = resolveMessageRef(ref, lastMsgListCache);
-  if (!m) return println('not found', 'error');
+  if (!m) return println('id does not exist', 'error');
   showMessageModal(m);
 };
 cmd.delmsg = (args)=>{
   const ref = args[0];
   const m = resolveMessageRef(ref, lastMsgListCache);
-  if (!m) return println('not found', 'error');
+  if (!m) return println('id does not exist', 'error');
   messages = messages.filter(x=>x.id!==m.id);
   saveMessages(messages);
   println('message deleted.', 'ok');
