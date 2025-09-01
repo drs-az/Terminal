@@ -36,6 +36,14 @@ function scheduleRecurringReminder(taskId, pattern) {
   recurringTimers.set(taskId, timer);
 }
 
+function clearRecurringReminder(taskId) {
+  const timer = recurringTimers.get(taskId);
+  if (timer) {
+    clearInterval(timer);
+    recurringTimers.delete(taskId);
+  }
+}
+
 function snoozeReminder(taskId, until) {
   const task = (window.items || []).find(t => t.id === taskId);
   if (!task) return;
@@ -341,6 +349,7 @@ function startCollaboration(sessionId, secret, saltBytes) {
 // Named exports for feature helpers
 export {
   scheduleRecurringReminder,
+  clearRecurringReminder,
   snoozeReminder,
   parseAdvancedQuery,
   editNoteRich,
@@ -348,6 +357,7 @@ export {
   applyThemePreset,
   exportThemePreset,
   startCollaboration,
-  setGDriveCredentials
+  setGDriveCredentials,
+  recurringTimers
 };
 

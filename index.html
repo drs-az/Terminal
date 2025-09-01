@@ -249,7 +249,7 @@
 
   <script type="module" src="features.js"></script>
   <script type="module">
-    import { scheduleRecurringReminder, snoozeReminder, parseAdvancedQuery, applyThemePreset, exportThemePreset, setGDriveCredentials, syncWithCloud, startCollaboration } from './features.js';
+    import { scheduleRecurringReminder, clearRecurringReminder, snoozeReminder, parseAdvancedQuery, applyThemePreset, exportThemePreset, setGDriveCredentials, syncWithCloud, startCollaboration, recurringTimers } from './features.js';
     /************
      * STORAGE
      ************/
@@ -866,6 +866,7 @@
     cmd.delete = (args)=>{
       const t = resolveTaskRef(args[0], lastTaskListCache);
       if (!t) return println('not found', 'error');
+      clearRecurringReminder(t.id);
       notes.forEach(n=>{ if (n.taskId === t.id) n.taskId = null; });
       if (dueTimers.has(t.id)){
         clearTimeout(dueTimers.get(t.id));
@@ -878,6 +879,7 @@
       const ref = args.shift();
       const t = resolveTaskRef(ref, lastTaskListCache);
       if (!t) return println('not found', 'error');
+      clearRecurringReminder(t.id);
       const text = args.join(' ').trim();
       if (!text) return println('usage: EDIT <id|#> <text>', 'error');
       t.text = text; saveItems(items);
@@ -1766,6 +1768,12 @@
       setStatus('Installed');
       deferredPrompt = null;
       installBtn.classList.remove('enabled');
+    });
+
+    window.addEventListener('beforeunload', () => {
+      for (const timer of recurringTimers.values()) {
+        clearInterval(timer);
+      }
     });
 
     /************
