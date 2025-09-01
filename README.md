@@ -170,6 +170,7 @@ Run inside the app:
 ```
 GDRIVECONFIG <client_id> <api_key>
 ```
+> Credentials are held only for the current session and are not saved to storage. Re-enter them after each reload and keep these keys private.
 Then:
 ```js
 await TerminalListFeatures.syncWithCloud('gdrive', 'upload');
@@ -195,6 +196,7 @@ collab.broadcast(); // sync current tasks/notes to other tabs with same session
 - If a passcode is set, all data is encrypted at rest using AES-256-GCM.
 - Passcode derivation uses PBKDF2 with 200k iterations.
 - Remember your passcode! Without it, encrypted data cannot be recovered.
+- Google Drive credentials configured via `GDRIVECONFIG` live only in memory; never commit API keys or share them publicly.
 
 ## License
 

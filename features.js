@@ -96,17 +96,23 @@ function editNoteRich(noteId, options = {}) {
 
 // --- Cloud Backup / Sync --------------------------------------------------
 
-const GDRIVE_CLIENT_ID_KEY = 'terminal-list-gdrive-client-id';
-const GDRIVE_API_KEY_KEY = 'terminal-list-gdrive-api-key';
+// Store Google Drive credentials only in memory to avoid persisting
+// sensitive API keys in localStorage.
+let gdriveCredentials = { clientId: null, apiKey: null };
 const GDRIVE_SCOPES = 'https://www.googleapis.com/auth/drive.file';
 let gdriveInitPromise = null;
 
+function setGDriveCredentials(clientId, apiKey) {
+  gdriveCredentials.clientId = clientId;
+  gdriveCredentials.apiKey = apiKey;
+}
+
 function getGDriveClientId() {
-  return localStorage.getItem(GDRIVE_CLIENT_ID_KEY);
+  return gdriveCredentials.clientId;
 }
 
 function getGDriveApiKey() {
-  return localStorage.getItem(GDRIVE_API_KEY_KEY);
+  return gdriveCredentials.apiKey;
 }
 
 function initGDrive() {
@@ -275,6 +281,7 @@ window.TerminalListFeatures = {
   syncWithCloud,
   applyThemePreset,
   exportThemePreset,
-  startCollaboration
+  startCollaboration,
+  setGDriveCredentials
 };
 

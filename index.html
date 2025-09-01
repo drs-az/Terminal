@@ -1336,9 +1336,8 @@
         println('usage: GDRIVECONFIG <client_id> <api_key>', 'error');
         return;
       }
-      localStorage.setItem('terminal-list-gdrive-client-id', clientId);
-      localStorage.setItem('terminal-list-gdrive-api-key', apiKey);
-      println('gdrive credentials saved.', 'ok');
+      TerminalListFeatures.setGDriveCredentials(clientId, apiKey);
+      println('gdrive credentials stored for this session. Keep your keys secure.', 'ok');
     };
 
     cmd.backup = (args)=>{
