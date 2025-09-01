@@ -190,9 +190,10 @@ collab.broadcast(); // sync current tasks/notes to other tabs with same session
 
 ## Security Notes
 
-- If no passcode is set, data is saved in browser localStorage unencrypted.  
-- If a passcode is set, all data is encrypted at rest using AES-256-GCM.  
-- Passcode derivation uses PBKDF2 with 200k iterations.  
+- If no passcode is set, data is saved in browser localStorage unencrypted.
+- On startup, the app warns you when no passcode exists and recommends running `setpass` to protect your data.
+- If a passcode is set, all data is encrypted at rest using AES-256-GCM.
+- Passcode derivation uses PBKDF2 with 200k iterations.
 - Remember your passcode! Without it, encrypted data cannot be recovered.
 
 ## License

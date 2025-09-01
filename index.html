@@ -1771,6 +1771,7 @@
       println('Type HELP for tasks, notes, and messages commands.');
       localStorage.setItem('terminal-list-initialized-v4','1');
     }
+    if (!passSalt) println('No passcode set. Use SETPASS to protect stored data.', 'error');
     if (locked) println('Data is locked. Type UNLOCK to access.', 'muted');
 
     // Focus on output tap
