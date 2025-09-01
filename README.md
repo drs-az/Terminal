@@ -35,6 +35,16 @@ Terminal-List/
       └── icon-512.png
 ```
 
+## Build
+
+Generate the asset manifest and cache version before deployment:
+
+```bash
+node build-manifest.js
+```
+
+This script hashes core assets, writes `asset-manifest.js`, and updates the cache version used by `sw.js`.
+
 ## Installation / Running
 
 You can run the app in two ways:
