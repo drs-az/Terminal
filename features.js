@@ -202,34 +202,28 @@ function ensureGDriveAuth() {
 
 function gdriveUpload() {
   const fileName = 'terminal-list-backup.json';
-  const data = JSON.stringify({ items: window.items || [], notes: window.notes || [], messages: window.messages || [] });
+  const data = JSON.stringify({
+    items: window.items || [],
+    notes: window.notes || [],
+    messages: window.messages || []
+  });
   return ensureGDriveAuth()
-    .then(() => gapi.client.drive.files.list({
-      q: `name='${fileName}' and trashed=false`,
-      fields: 'files(id,name)'
-    }))
+    .then(() =>
+      gapi.client.drive.files.list({
+        q: `name='${fileName}' and trashed=false`,
+        fields: 'files(id,name)'
+      })
+    )
     .then(res => {
       const fileId = res.result.files && res.result.files[0] && res.result.files[0].id;
-      const boundary = '-------314159265358979323846';
-      const delimiter = `\r\n--${boundary}\r\n`;
-      const closeDelim = `\r\n--${boundary}--`;
+      const blob = new Blob([data], { type: 'application/json' });
       const metadata = { name: fileName, mimeType: 'application/json' };
-      const multipartRequestBody =
-        delimiter + 'Content-Type: application/json\r\n\r\n' +
-        JSON.stringify(metadata) +
-        delimiter + 'Content-Type: application/json\r\n\r\n' +
-        data + closeDelim;
-      const path = fileId ? `/upload/drive/v3/files/${fileId}` : '/upload/drive/v3/files';
-      const method = fileId ? 'PATCH' : 'POST';
-      return gapi.client.request({
-        path,
-        method,
-        params: { uploadType: 'multipart' },
-        headers: { 'Content-Type': 'multipart/related; boundary=' + boundary },
-        body: multipartRequestBody,
-      });
+      return fileId
+        ? gapi.client.drive.files.update({ fileId, resource: metadata, media: { body: blob } })
+        : gapi.client.drive.files.create({ resource: metadata, media: { body: blob } });
     })
-    .then(() => 'uploaded');
+    .then(() => 'uploaded')
+    .catch(err => { throw err && err.result ? err.result.error : err; });
 }
 
 function gdriveDownload() {
