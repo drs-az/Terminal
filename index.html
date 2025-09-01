@@ -7,6 +7,8 @@
   <!-- PWA refs -->
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#32cd32">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; script-src 'self' https://apis.google.com 'unsafe-inline'; style-src 'self' 'unsafe-inline';"/>
+  <script src="sanitize.js"></script>
   <style>
     :root{
       --bg: #000;
@@ -542,7 +544,7 @@
     function showAttachmentError(msg){
       const err = document.createElement('div');
       err.className = 'error';
-      err.textContent = msg;
+      err.textContent = sanitize(msg);
       noteAttachmentsPreview.appendChild(err);
       setTimeout(()=>err.remove(),2000);
     }
@@ -607,7 +609,7 @@
     function println(text, cls){
       const div = document.createElement('div');
       div.className = 'line' + (cls ? ' ' + cls : '');
-      div.textContent = text;
+      div.textContent = sanitize(text);
       output.appendChild(div);
       output.scrollTop = output.scrollHeight;
     }
@@ -625,7 +627,7 @@
       const line = `${idx}(${t.id}) ${box} ${t.text}${tags}${due}${pri}${noteBadge}`;
       const div = document.createElement('div');
       div.className = 'line' + (t.done ? ' task-done' : '');
-      div.textContent = line;
+      div.textContent = sanitize(line);
       output.appendChild(div);
     }
     function printList(arr, title){
@@ -641,7 +643,7 @@
       const line = `${idx}(${n.id}) 📝 ${n.title || ''} — ${n.description || ''}${tags}${taskLink}`;
       const div = document.createElement('div');
       div.className = 'line';
-      div.textContent = line;
+      div.textContent = sanitize(line);
       output.appendChild(div);
       if (n.attachments && n.attachments.length){
         const adiv = document.createElement('div');
@@ -657,7 +659,7 @@
           } else {
             const a = document.createElement('a');
             a.href = att;
-            a.textContent = att;
+            a.textContent = sanitize(att);
             a.target = '_blank';
             a.style.marginRight = '6px';
             adiv.appendChild(a);
@@ -678,7 +680,7 @@
       const line = `${idx}(${m.id}) ${m.from} -> ${m.to} : ${m.subject || ''} [${m.date} ${m.time}]`;
       const div = document.createElement('div');
       div.className = 'line';
-      div.textContent = line;
+      div.textContent = sanitize(line);
       output.appendChild(div);
     }
     function printMessages(arr, title){
@@ -1140,7 +1142,7 @@
           } else {
             const a = document.createElement('a');
             a.href = att;
-            a.textContent = att;
+            a.textContent = sanitize(att);
             a.target = '_blank';
             a.style.marginRight = '6px';
             adiv.appendChild(a);
@@ -1592,7 +1594,7 @@
         } else {
           if (historyIndex < history.length) historyIndex++;
         }
-        command.value = history[historyIndex] || '';
+        command.value = sanitize(history[historyIndex] || '');
         e.preventDefault();
         return;
       }
@@ -1619,15 +1621,15 @@
 
     function showNoteModal(note){
       editingNote = note || null;
-      noteModalTitle.textContent = note ? 'Edit Note' : 'Add Note';
-      noteTitleInput.value = note ? note.title || '' : '';
-      noteDescriptionInput.value = note ? note.description || '' : '';
-      noteLinksInput.value = note ? (note.links || []).join(', ') : '';
-      noteAttachmentsInput.value = note ? (note.attachments || []).filter(a=>!a.startsWith('idb:')).join(', ') : '';
+      noteModalTitle.textContent = sanitize(note ? 'Edit Note' : 'Add Note');
+      noteTitleInput.value = note ? sanitize(note.title || '') : '';
+      noteDescriptionInput.value = note ? sanitize(note.description || '') : '';
+      noteLinksInput.value = note ? sanitize((note.links || []).join(', ')) : '';
+      noteAttachmentsInput.value = note ? sanitize((note.attachments || []).filter(a=>!a.startsWith('idb:')).join(', ')) : '';
       noteAttachmentsPreview.innerHTML = '';
       noteAttachmentsFiles.value = '';
       pendingAttachmentFiles = [];
-      noteBodyInput.value = note ? note.body || '' : '';
+      noteBodyInput.value = note ? sanitize(note.body || '') : '';
       noteModal.style.display = 'flex';
       noteTitleInput.focus();
     }
@@ -1640,14 +1642,14 @@
     }
     function showMessageModal(prefill){
       replyingMessage = prefill || null;
-      msgModalTitle.textContent = prefill ? 'Reply Message' : 'Send Message';
-      msgFromInput.value = prefill ? (prefill.to || '') : '';
-      msgToInput.value = prefill ? (prefill.from || '') : '';
-      msgSubjectInput.value = prefill ? (prefill.subject || '') : '';
+      msgModalTitle.textContent = sanitize(prefill ? 'Reply Message' : 'Send Message');
+      msgFromInput.value = prefill ? sanitize(prefill.to || '') : '';
+      msgToInput.value = prefill ? sanitize(prefill.from || '') : '';
+      msgSubjectInput.value = prefill ? sanitize(prefill.subject || '') : '';
       const now = new Date();
-      msgDateInput.value = now.toISOString().slice(0,10);
-      msgTimeInput.value = now.toTimeString().slice(0,5);
-      msgBodyInput.value = prefill ? (prefill.message || '') : '';
+      msgDateInput.value = sanitize(now.toISOString().slice(0,10));
+      msgTimeInput.value = sanitize(now.toTimeString().slice(0,5));
+      msgBodyInput.value = prefill ? sanitize(prefill.message || '') : '';
       msgPassInput.value = '';
       msgModal.style.display = 'flex';
       msgFromInput.focus();
@@ -1745,7 +1747,7 @@
     const installClose = document.getElementById('install-close');
     let deferredPrompt = null;
 
-    function setStatus(s){ if (installStatus) installStatus.textContent = s; }
+    function setStatus(s){ if (installStatus) installStatus.textContent = sanitize(s); }
 
     // Register SW and wait until it's controlling the page
     if ('serviceWorker' in navigator) {
