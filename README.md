@@ -197,6 +197,9 @@ await collab.broadcast(); // sync current tasks/notes to other tabs with same se
 - Passcode derivation uses PBKDF2 with 200k iterations.
 - Remember your passcode! Without it, encrypted data cannot be recovered.
 - Google Drive credentials configured via `GDRIVECONFIG` live only in memory; never commit API keys or share them publicly.
+- When updating the Google API script, recompute its Subresource Integrity hash using:
+  `curl -s https://apis.google.com/js/api.js | openssl dgst -sha384 -binary | openssl base64 -A`
+  and replace the `integrity` value in `index.html`.
 
 ## License
 
