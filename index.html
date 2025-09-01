@@ -1166,6 +1166,7 @@
         println('Enter share passcode:', 'muted');
         const pass = await getNextLine(true);
         const obj = await decryptShared(payload.enc, pass);
+        delete obj.passcode;
         if (!obj.id) obj.id = makeId();
         const idx = messages.findIndex(m=>m.id===obj.id);
         if (idx>=0) messages[idx]=obj; else messages.push(obj);
@@ -1615,7 +1616,7 @@
         println('from, to, and passcode required','error');
         return;
       }
-      const m = { id: makeId(), from, to, subject, date, time, message: body, passcode: pass };
+      const m = { id: makeId(), from, to, subject, date, time, message: body };
       const idx = messages.findIndex(x=>x.id===m.id);
       if (idx>=0) messages[idx]=m; else messages.push(m);
       messages.sort((a,b)=> new Date(b.date+' '+b.time) - new Date(a.date+' '+a.time));
