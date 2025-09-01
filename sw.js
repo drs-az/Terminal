@@ -1,13 +1,8 @@
 // Terminal List Service Worker
-const CACHE_NAME = 'terminal-list-v1';
-const ASSETS = [
-  './',
-  './index.html',
-  './manifest.webmanifest',
-  './sw.js',
-  './icons/icon-192.png',
-  './icons/icon-512.png'
-];
+importScripts('./asset-manifest.js');
+
+const CACHE_NAME = `terminal-list-${self.__ASSET_MANIFEST.version}`;
+const ASSETS = self.__ASSET_MANIFEST.files;
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -17,8 +12,15 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then(keys => Promise.all(keys.map(k => k !== CACHE_NAME ? caches.delete(k) : null)))
-      .then(() => self.clients.claim())
+    (async () => {
+      const keys = await caches.keys();
+      await Promise.all(
+        keys
+          .filter((k) => k.startsWith('terminal-list-') && k !== CACHE_NAME)
+          .map((k) => caches.delete(k))
+      );
+      await self.clients.claim();
+    })()
   );
 });
 
@@ -29,22 +31,34 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     (async () => {
       const cache = await caches.open(CACHE_NAME);
-      try {
-        const netRes = await fetch(req);
-        if (netRes && netRes.ok && (new URL(req.url).origin === self.location.origin)) {
-          cache.put(req, netRes.clone());
-        }
-        return netRes;
-      } catch (e) {
-        const cached = await cache.match(req);
-        if (cached) return cached;
-        // fallback to cached index for navigation requests
-        if (req.mode === 'navigate') {
-          const index = await cache.match('./index.html');
-          if (index) return index;
-        }
-        throw e;
+      const cached = await cache.match(req);
+
+      const fetchPromise = fetch(req)
+        .then(async (netRes) => {
+          if (
+            netRes &&
+            netRes.ok &&
+            new URL(req.url).origin === self.location.origin
+          ) {
+            await cache.put(req, netRes.clone());
+          }
+          return netRes;
+        })
+        .catch(() => null);
+
+      event.waitUntil(fetchPromise);
+
+      if (cached) return cached;
+
+      const netRes = await fetchPromise;
+      if (netRes) return netRes;
+
+      if (req.mode === 'navigate') {
+        const index = await cache.match('./index.html');
+        if (index) return index;
       }
+
+      return Response.error();
     })()
   );
 });
