@@ -338,8 +338,8 @@ function startCollaboration(sessionId, secret, saltBytes) {
   return { channel, broadcast, getSalt: () => Array.from(salt || []) };
 }
 
-// Expose features for external use
-window.TerminalListFeatures = {
+// Named exports for feature helpers
+export {
   scheduleRecurringReminder,
   snoozeReminder,
   parseAdvancedQuery,
