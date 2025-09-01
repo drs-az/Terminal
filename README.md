@@ -137,23 +137,26 @@ Type commands into the input bar or directly in the terminal view.
 
 ## Feature Helpers
 
-A global `TerminalListFeatures` object exposes experimental helpers, implemented in `features.js`. Invoke these from the browser console.
+Experimental helpers live in `features.js` and are exported as named functions. Import the helpers you need in your own scripts or from the browser console using `import('./features.js')`.
 
 ### Recurring & Snoozeable Reminders
 ```js
-TerminalListFeatures.scheduleRecurringReminder(taskId, { every: 1, unit: 'day' });
-TerminalListFeatures.snoozeReminder(taskId, '2024-05-20');
+import { scheduleRecurringReminder, snoozeReminder } from './features.js';
+scheduleRecurringReminder(taskId, { every: 1, unit: 'day' });
+snoozeReminder(taskId, '2024-05-20');
 ```
 
 ### Advanced Queries
 ```js
+import { parseAdvancedQuery } from './features.js';
 // returns matching task IDs
-TerminalListFeatures.parseAdvancedQuery('tag:work pri:H due:overdue done:false');
+parseAdvancedQuery('tag:work pri:H due:overdue done:false');
 ```
 
 ### Rich Note Editing
 ```js
-TerminalListFeatures.editNoteRich(noteId, {
+import { editNoteRich } from './features.js';
+editNoteRich(noteId, {
   title: 'Updated note',
   attachments: ['https://example.com/file.png'],
   links: ['note:2']
@@ -162,8 +165,9 @@ TerminalListFeatures.editNoteRich(noteId, {
 
 ### Cloud Backup
 ```js
-await TerminalListFeatures.syncWithCloud('local', 'upload');   // save to localStorage sandbox
-await TerminalListFeatures.syncWithCloud('local', 'download'); // restore from sandbox
+import { syncWithCloud } from './features.js';
+await syncWithCloud('local', 'upload');   // save to localStorage sandbox
+await syncWithCloud('local', 'download'); // restore from sandbox
 ```
 
 ### Google Drive Backup
@@ -174,19 +178,22 @@ GDRIVECONFIG <client_id> <api_key>
 > Credentials are held only for the current session and are not saved to storage. Re-enter them after each reload and keep these keys private.
 Then:
 ```js
-await TerminalListFeatures.syncWithCloud('gdrive', 'upload');
-await TerminalListFeatures.syncWithCloud('gdrive', 'download');
+import { syncWithCloud } from './features.js';
+await syncWithCloud('gdrive', 'upload');
+await syncWithCloud('gdrive', 'download');
 ```
 
 ### Theme Presets
 ```js
-TerminalListFeatures.applyThemePreset({ bg:'#000', fg:'#0f0', border:'#0f0' });
-TerminalListFeatures.exportThemePreset('my-theme'); // downloads my-theme.json
+import { applyThemePreset, exportThemePreset } from './features.js';
+applyThemePreset({ bg:'#000', fg:'#0f0', border:'#0f0' });
+exportThemePreset('my-theme'); // downloads my-theme.json
 ```
 
 ### Collaboration Channel
 ```js
-const collab = TerminalListFeatures.startCollaboration('session1', 'shared-secret');
+import { startCollaboration } from './features.js';
+const collab = startCollaboration('session1', 'shared-secret');
 await collab.broadcast(); // sync current tasks/notes to other tabs with same session and secret
 ```
 
