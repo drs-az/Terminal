@@ -58,6 +58,37 @@ function snoozeReminder(taskId, until) {
 
 // --- Advanced Tag & Search ------------------------------------------------
 
+// Precomputed item index
+const itemIndex = { tags: new Map(), pri: new Map(), done: new Map() };
+
+function indexItems(items = window.items || []) {
+  itemIndex.tags = new Map();
+  itemIndex.pri = new Map();
+  itemIndex.done = new Map();
+  items.forEach(t => {
+    const id = t.id;
+    (t.tags || []).forEach(tag => {
+      if (!itemIndex.tags.has(tag)) itemIndex.tags.set(tag, new Set());
+      itemIndex.tags.get(tag).add(id);
+    });
+    const p = (t.pri || '').toUpperCase();
+    if (p) {
+      if (!itemIndex.pri.has(p)) itemIndex.pri.set(p, new Set());
+      itemIndex.pri.get(p).add(id);
+    }
+    const doneKey = !!t.done;
+    if (!itemIndex.done.has(doneKey)) itemIndex.done.set(doneKey, new Set());
+    itemIndex.done.get(doneKey).add(id);
+  });
+  return itemIndex;
+}
+
+function intersectSets(a, b) {
+  const res = new Set();
+  a.forEach(v => { if (b.has(v)) res.add(v); });
+  return res;
+}
+
 function parseAdvancedQuery(query) {
   if (!query) return [];
   const tokens = query.trim().split(/\s+/);
@@ -69,22 +100,40 @@ function parseAdvancedQuery(query) {
     else if (tok.startsWith('pri:')) filters.pri = tok.slice(4).toUpperCase();
     else filters.text.push(tok.toLowerCase());
   });
+
+  let ids = null;
+  filters.tags.forEach(tag => {
+    const set = itemIndex.tags.get(tag) || new Set();
+    ids = ids ? intersectSets(ids, set) : new Set(set);
+  });
+  if (filters.pri) {
+    const set = itemIndex.pri.get(filters.pri) || new Set();
+    ids = ids ? intersectSets(ids, set) : new Set(set);
+  }
+  if (filters.done !== null) {
+    const set = itemIndex.done.get(filters.done) || new Set();
+    ids = ids ? intersectSets(ids, set) : new Set(set);
+  }
+  if (!ids) ids = new Set((window.items || []).map(t => t.id));
+
   const today = new Date().toISOString().slice(0, 10);
-  return (window.items || []).filter(t => {
-    if (filters.tags.length && !filters.tags.every(tag => (t.tags || []).includes(tag))) return false;
+  const map = new Map((window.items || []).map(t => [t.id, t]));
+  const result = [];
+  ids.forEach(id => {
+    const t = map.get(id);
+    if (!t) return;
     if (filters.due) {
       if (filters.due === 'overdue') {
-        if (!t.due || t.due >= today) return false;
+        if (!t.due || t.due >= today) return;
       } else {
         const due = filters.due === 'today' ? today : filters.due;
-        if (t.due !== due) return false;
+        if (t.due !== due) return;
       }
     }
-    if (filters.pri && (t.pri || '').toUpperCase() !== filters.pri) return false;
-    if (filters.done !== null && t.done !== filters.done) return false;
-    if (filters.text.length && !filters.text.every(q => t.text.toLowerCase().includes(q))) return false;
-    return true;
-  }).map(t => t.id);
+    if (filters.text.length && !filters.text.every(q => t.text.toLowerCase().includes(q))) return;
+    result.push(id);
+  });
+  return result;
 }
 
 // --- Rich Note Editing ----------------------------------------------------
@@ -351,6 +400,7 @@ export {
   scheduleRecurringReminder,
   clearRecurringReminder,
   snoozeReminder,
+  indexItems,
   parseAdvancedQuery,
   editNoteRich,
   syncWithCloud,
