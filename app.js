@@ -1,4 +1,4 @@
-import { scheduleRecurringReminder, clearRecurringReminder, snoozeReminder, parseAdvancedQuery, applyThemePreset, exportThemePreset, setGDriveCredentials, syncWithCloud, recurringTimers, indexItems } from './features.js';
+import { scheduleRecurringReminder, clearRecurringReminder, snoozeReminder, parseAdvancedQuery, applyThemePreset, exportThemePreset, setGDriveCredentials, syncWithCloud, recurringTimers, indexItems, registerDataGetters } from './features.js';
 let encryptionModule;
 function loadEncryption() {
   if (!encryptionModule) encryptionModule = import("./encryption.js");
@@ -124,12 +124,14 @@ let notes = state.notes.map(n=>{
   };
 });
 state.notes = notes;
-// expose notes array for feature helpers
-window.notes = notes;
 if (needsNoteMigration) saveNotes(notes);
 let messages = state.messages || [];
 state.messages = messages;
-window.messages = messages;
+registerDataGetters({
+  items: () => items,
+  notes: () => notes,
+  messages: () => messages
+});
 
 // Service Worker registration and notification timers
 let swRegistration = null;
@@ -194,13 +196,11 @@ if (navigator.serviceWorker) {
 function saveItems(v){ state.items = v; indexItems(v); saveState(state).catch(()=>{}); }
 function saveNotes(v){
   notes = v;
-  window.notes = v;
   state.notes = v;
   saveState(state).catch(()=>{});
 }
 function saveMessages(v){
   messages = v;
-  window.messages = v;
   state.messages = v;
   saveState(state).catch(()=>{});
 }
