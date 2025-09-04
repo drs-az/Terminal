@@ -12,19 +12,16 @@
 ## 3. Configuration & secrets check
 - **CSP**: `index.html` sets a restrictive Content-Security-Policy allowing scripts from `'self'`, `https://apis.google.com`, and `https://cdn.jsdelivr.net`.
 - **Service worker**: `sw.js` precaches assets and updates caches on activation. No explicit `Cache-Control` headers are added by the simple dev server; ensure production responses set appropriate headers for sensitive data.
-- **DOMPurify**: Application loads DOMPurify v3.0.6 from the jsDelivr CDN.
 - **Secrets**: Repository scan found only placeholder values (e.g., `YOUR_GOOGLE_API_KEY`). No credentials committed.
 
 ## 4. Runtime behavior verification
 - Local test server (`python -m http.server`) served assets without `Cache-Control` headers.
-- DOMPurify v3.0.6 confirmed to load from the jsDelivr CDN.
 - `encryptForShare` / `decryptShared` functions successfully round‑trip data in Node.js, demonstrating encryption and passcode flows.
 - Full browser-based verification of service worker behavior and passcode UI was not performed.
 
 ## 5. Summary & recommendations
 - Establish dependency management and run regular `npm audit` scans.
 - Add automated static security analysis to CI once network access allows dependency installation.
-- Load DOMPurify from a vetted CDN and verify its integrity with Subresource Integrity (SRI).
 - Configure production server or service worker to enforce strict `Cache-Control` headers on sensitive endpoints.
 - Continue to avoid committing real credentials; use environment variables and templates for secrets.
 

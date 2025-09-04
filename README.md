@@ -32,7 +32,6 @@ Terminal/
  ├── features.js             # Feature helpers (recurring reminders, cloud sync, etc.)
  ├── collaboration.js        # Encrypted BroadcastChannel syncing
  ├── encryption.js           # AES-256-GCM helpers
- ├── sanitize.js             # Minimal HTML sanitizer
  ├── third_party/            # External libraries
  │     └── strip-metadata.js # Removes image metadata from uploads
  ├── build-manifest.js       # Generates asset manifest and config.json
@@ -268,13 +267,6 @@ await collab.broadcast(); // sync current tasks/notes to other tabs with same se
    your data so the cost can be increased in future versions).
 - Remember your passcode! Without it, encrypted data cannot be recovered.
 - Google Drive credentials configured via `GDRIVECONFIG` live only in memory; never commit API keys or share them publicly.
-- For HTML sanitization, the app loads DOMPurify from
-  `https://cdn.jsdelivr.net/npm/dompurify@3.0.5/dist/purify.min.js`
-  with SRI hash
-  `sha384-OLBgp1GsljhM2TJ+sbHjaiH9txEUvgdDTAzHv2P24donTt6/529l+9Ua0vFImLlb`.
-  Recompute the hash with:
-  `curl -sSL https://cdn.jsdelivr.net/npm/dompurify@3.0.5/dist/purify.min.js | openssl dgst -sha384 -binary | openssl base64 -A`.
-  Without DOMPurify, the app falls back to basic escaping.
 - When updating the Google API script, recompute its Subresource Integrity hash using:
   `curl -s https://apis.google.com/js/api.js | openssl dgst -sha384 -binary | openssl base64 -A`
   and replace the `integrity` value in `index.html`.
