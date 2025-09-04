@@ -223,7 +223,8 @@ await collab.broadcast(); // sync current tasks/notes to other tabs with same se
 - On startup, the app blocks saving until you set a passcode with `setpass`.
 - Without a passcode, data cannot be stored in browser localStorage.
 - If a passcode is set, all data is encrypted at rest using AES-256-GCM.
-- Passcode derivation uses PBKDF2 with 200k iterations.
+ - Passcode derivation uses PBKDF2 with 600k iterations (configurable and stored
+   with your data so the cost can be increased in future versions).
 - Remember your passcode! Without it, encrypted data cannot be recovered.
 - Google Drive credentials configured via `GDRIVECONFIG` live only in memory; never commit API keys or share them publicly.
 - When updating the Google API script, recompute its Subresource Integrity hash using:
