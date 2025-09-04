@@ -1,3 +1,5 @@
+import { getItems, getNotes, getMessages } from './features.js';
+
 function startCollaboration(sessionId, secret, saltBytes) {
   const channel = new BroadcastChannel(`tl-collab-${sessionId}`);
   const encoder = new TextEncoder();
@@ -55,12 +57,9 @@ function startCollaboration(sessionId, secret, saltBytes) {
       );
       const data = JSON.parse(decoder.decode(decrypted));
       if (data && data.items && data.notes) {
-        window.items = data.items;
-        window.notes = data.notes;
-        window.messages = data.messages || [];
-        if (typeof saveItems === 'function') saveItems(window.items);
-        if (typeof saveNotes === 'function') saveNotes(window.notes);
-        if (typeof saveMessages === 'function') saveMessages(window.messages);
+        if (typeof saveItems === 'function') saveItems(data.items);
+        if (typeof saveNotes === 'function') saveNotes(data.notes);
+        if (typeof saveMessages === 'function') saveMessages(data.messages || []);
         if (typeof rescheduleAllNotifications === 'function') rescheduleAllNotifications();
       }
     } catch (err) {
@@ -71,7 +70,7 @@ function startCollaboration(sessionId, secret, saltBytes) {
   async function broadcast() {
     const key = await getKey();
     const iv = crypto.getRandomValues(new Uint8Array(12));
-    const payload = { items: window.items || [], notes: window.notes || [], messages: window.messages || [] };
+    const payload = { items: getItems(), notes: getNotes(), messages: getMessages() };
     const encrypted = await crypto.subtle.encrypt(
       { name: 'AES-GCM', iv },
       key,

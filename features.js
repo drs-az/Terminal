@@ -4,6 +4,15 @@
  * and interact with the global task/note state defined in index.html.
  */
 
+let getItems = () => [];
+let getNotes = () => [];
+let getMessages = () => [];
+function registerDataGetters({ items, notes, messages }) {
+  if (items) getItems = items;
+  if (notes) getNotes = notes;
+  if (messages) getMessages = messages;
+}
+
 // --- Recurring & Snoozeable Reminders ------------------------------------
 
 const recurringTimers = new Map();
@@ -20,13 +29,13 @@ function msFromPattern(pattern = {}) {
 }
 
 function scheduleRecurringReminder(taskId, pattern) {
-  const task = (window.items || []).find(t => t.id === taskId);
+  const task = getItems().find(t => t.id === taskId);
   if (!task) return;
   const interval = msFromPattern(pattern);
   const tick = () => {
     const next = new Date(Date.now() + interval);
     task.due = next.toISOString().slice(0, 10);
-    if (typeof saveItems === 'function') saveItems(items);
+    if (typeof saveItems === 'function') saveItems(getItems());
     if (typeof scheduleTaskNotification === 'function') {
       scheduleTaskNotification(task);
     }
@@ -45,12 +54,12 @@ function clearRecurringReminder(taskId) {
 }
 
 function snoozeReminder(taskId, until) {
-  const task = (window.items || []).find(t => t.id === taskId);
+  const task = getItems().find(t => t.id === taskId);
   if (!task) return;
   const date = new Date(until);
   if (isNaN(date)) return;
   task.due = date.toISOString().slice(0, 10);
-  if (typeof saveItems === 'function') saveItems(items);
+  if (typeof saveItems === 'function') saveItems(getItems());
   if (typeof scheduleTaskNotification === 'function') {
     scheduleTaskNotification(task);
   }
@@ -61,7 +70,7 @@ function snoozeReminder(taskId, until) {
 // Precomputed item index
 const itemIndex = { tags: new Map(), pri: new Map(), done: new Map() };
 
-function indexItems(items = window.items || []) {
+function indexItems(items = getItems()) {
   itemIndex.tags = new Map();
   itemIndex.pri = new Map();
   itemIndex.done = new Map();
@@ -114,10 +123,10 @@ function parseAdvancedQuery(query) {
     const set = itemIndex.done.get(filters.done) || new Set();
     ids = ids ? intersectSets(ids, set) : new Set(set);
   }
-  if (!ids) ids = new Set((window.items || []).map(t => t.id));
+  if (!ids) ids = new Set(getItems().map(t => t.id));
 
   const today = new Date().toISOString().slice(0, 10);
-  const map = new Map((window.items || []).map(t => [t.id, t]));
+  const map = new Map(getItems().map(t => [t.id, t]));
   const result = [];
   ids.forEach(id => {
     const t = map.get(id);
@@ -139,7 +148,7 @@ function parseAdvancedQuery(query) {
 // --- Rich Note Editing ----------------------------------------------------
 
 function editNoteRich(noteId, options = {}) {
-  const note = (window.notes || []).find(n => n.id === noteId);
+  const note = getNotes().find(n => n.id === noteId);
   if (!note) return null;
   if (options.title !== undefined) note.title = options.title;
   if (options.body !== undefined) note.body = options.body;
@@ -147,7 +156,7 @@ function editNoteRich(noteId, options = {}) {
   if (options.links !== undefined) {
     note.links = Array.isArray(options.links) ? options.links : [options.links];
   }
-  if (typeof saveNotes === 'function') saveNotes(notes);
+    if (typeof saveNotes === 'function') saveNotes(getNotes());
   return note;
 }
 
@@ -203,9 +212,9 @@ function ensureGDriveAuth() {
 function gdriveUpload() {
   const fileName = 'terminal-list-backup.json';
   const data = JSON.stringify({
-    items: window.items || [],
-    notes: window.notes || [],
-    messages: window.messages || []
+    items: getItems(),
+    notes: getNotes(),
+    messages: getMessages()
   });
   return ensureGDriveAuth()
     .then(() =>
@@ -240,12 +249,9 @@ function gdriveDownload() {
     })
     .then(res => {
       const data = typeof res.body === 'string' ? JSON.parse(res.body) : res.result;
-      window.items = data.items || [];
-      window.notes = data.notes || [];
-      window.messages = data.messages || [];
-      if (typeof saveItems === 'function') saveItems(window.items);
-      if (typeof saveNotes === 'function') saveNotes(window.notes);
-      if (typeof saveMessages === 'function') saveMessages(window.messages);
+      if (typeof saveItems === 'function') saveItems(data.items || []);
+      if (typeof saveNotes === 'function') saveNotes(data.notes || []);
+      if (typeof saveMessages === 'function') saveMessages(data.messages || []);
       if (typeof rescheduleAllNotifications === 'function') rescheduleAllNotifications();
       return 'downloaded';
     });
@@ -258,19 +264,16 @@ function syncWithCloud(provider = 'local', mode = 'upload') {
 
   const key = `terminal-list-sync-${provider}`;
   if (mode === 'upload') {
-    const data = JSON.stringify({ items: window.items || [], notes: window.notes || [], messages: window.messages || [] });
+    const data = JSON.stringify({ items: getItems(), notes: getNotes(), messages: getMessages() });
     localStorage.setItem(key, data);
     return Promise.resolve('uploaded');
   } else {
     const raw = localStorage.getItem(key);
     if (!raw) return Promise.reject('no-data');
     const data = JSON.parse(raw);
-    window.items = data.items || [];
-    window.notes = data.notes || [];
-    window.messages = data.messages || [];
-    if (typeof saveItems === 'function') saveItems(window.items);
-    if (typeof saveNotes === 'function') saveNotes(window.notes);
-    if (typeof saveMessages === 'function') saveMessages(window.messages);
+    if (typeof saveItems === 'function') saveItems(data.items || []);
+    if (typeof saveNotes === 'function') saveNotes(data.notes || []);
+    if (typeof saveMessages === 'function') saveMessages(data.messages || []);
     if (typeof rescheduleAllNotifications === 'function') rescheduleAllNotifications();
     return Promise.resolve('downloaded');
   }
@@ -315,6 +318,10 @@ export {
   applyThemePreset,
   exportThemePreset,
   setGDriveCredentials,
-  recurringTimers
+  recurringTimers,
+  registerDataGetters,
+  getItems,
+  getNotes,
+  getMessages
 };
 
