@@ -42,6 +42,16 @@ let locked = false;
 let passDeclined = localStorage.getItem(PASS_DECLINED_KEY) === '1';
 let savingBlocked = !passDeclined;
 
+let dicewareWords = null;
+async function loadDicewareWords() {
+  if (!dicewareWords) {
+    const res = await fetch('eff_large_wordlist.txt');
+    const text = await res.text();
+    dicewareWords = text.trim().split('\n').map(line => line.split('\t')[1]);
+  }
+  return dicewareWords;
+}
+
 function loadState(){
   try{
     const raw = localStorage.getItem(STORE_KEY_V2);
@@ -568,7 +578,7 @@ cmd.help = () => {
   println('  - import — paste JSON to replace all data');
   println('  - importshare — paste shared item JSON and decrypt with a passcode');
   println('  - wipe — clear all data (with confirm)');
-  println('  - genpass — generate a random 64-character passcode using letters, digits, and symbols');
+  println('  - genpass — generate a Diceware passphrase');
   println('  - setpass — set or clear passcode');
   println('  - nopass — allow saving without a passcode');
   println('  - lock — clear decrypted data from memory');
@@ -1051,6 +1061,10 @@ cmd.syntax = (args)=>{
       'IMPORTSHARE',
       '  Paste shared item JSON, then enter its passcode'
     ],
+    genpass: [
+      'GENPASS [-w <n>] [-s <sep>]',
+      '  Generate a Diceware passphrase'
+    ],
     sendmsg: [
       'SENDMSG',
       '  Compose and share an encrypted message'
@@ -1235,12 +1249,29 @@ cmd.importshare = async ()=>{
 }; 
 cmd.wipe = ()=> openModal();
 
-cmd.genpass = ()=>{
-  const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;:,.<>/?';
-  const values = new Uint8Array(64);
-  crypto.getRandomValues(values);
-  const pass = Array.from(values, v => charset[v % charset.length]).join('');
-  println(pass);
+cmd.genpass = async (args = []) => {
+  let words = 8;
+  let sep = ' ';
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i];
+    if (a === '--words' || a === '-w') {
+      const n = parseInt(args[i + 1], 10);
+      if (!isNaN(n) && n > 0) { words = n; }
+      i++;
+    } else if (a === '--sep' || a === '-s') {
+      if (args[i + 1] !== undefined) sep = args[i + 1];
+      i++;
+    }
+  }
+  const list = await loadDicewareWords();
+  const out = [];
+  const buf = new Uint16Array(1);
+  while (out.length < words) {
+    crypto.getRandomValues(buf);
+    const idx = buf[0] & 0x1fff;
+    if (idx < list.length) out.push(list[idx]);
+  }
+  println(out.join(sep));
 };
 
 cmd.setpass = async ()=>{
