@@ -6,6 +6,6 @@
   "scripts": {
     "build": "node build-manifest.js",
     "prepublishOnly": "npm audit",
-    "test": "node test/cache-header.test.js"
+    "test": "node test/cache-header.test.js && node test/collab.test.js"
   }
 }
