@@ -1,4 +1,5 @@
 import { scheduleRecurringReminder, clearRecurringReminder, snoozeReminder, parseAdvancedQuery, applyThemePreset, exportThemePreset, setGDriveCredentials, syncWithCloud, recurringTimers, indexItems, registerDataGetters } from './features.js';
+import stripImageMetadata from './third_party/strip-metadata.js';
 let encryptionModule;
 function loadEncryption() {
   if (!encryptionModule) encryptionModule = import("./encryption.js");
@@ -1759,7 +1760,13 @@ noteSave.addEventListener('click', async ()=>{
     attachments = existing.concat(attachments);
   }
   for (const entry of pendingAttachmentFiles){
-    let ref = await storeImageBlob(entry.file);
+    let processed = entry.file;
+    try {
+      processed = await stripImageMetadata(entry.file);
+    } catch (e) {
+      console.warn('Failed to strip metadata', e);
+    }
+    let ref = await storeImageBlob(processed);
     if (ref) attachments.push('idb:'+ref);
     else if (entry.dataUrl) attachments.push(entry.dataUrl);
   }
