@@ -1,0 +1,29 @@
+# Security Audit Report
+
+## 1. Dependency vulnerability scan
+- `npm audit` could not run: repository lacks `package.json`/lockfile.
+- No JavaScript package dependencies detected; consider adding a lockfile if packages are introduced.
+
+## 2. Static code analysis
+- Attempted to install and run `eslint` with security rules, but npm registry access was denied (`403 Forbidden`).
+- Recommend integrating a security-focused linter (e.g., ESLint with `eslint-plugin-security`) in CI once network access permits.
+
+## 3. Configuration & secrets check
+- **CSP**: `index.html` sets a restrictive Content-Security-Policy allowing scripts from `'self'` and `https://apis.google.com` only.
+- **Service worker**: `sw.js` precaches assets and updates caches on activation. No explicit `Cache-Control` headers are added by the simple dev server; ensure production responses set appropriate headers for sensitive data.
+- **DOMPurify**: Application loads `third_party/purify.min.js` locally, but file is a placeholder. Replace with the official bundle during build.
+- **Secrets**: Repository scan found only placeholder values (e.g., `YOUR_GOOGLE_API_KEY`). No credentials committed.
+
+## 4. Runtime behavior verification
+- Local test server (`python -m http.server`) served assets without `Cache-Control` headers.
+- `third_party/purify.min.js` confirmed to load from local bundle.
+- `encryptForShare` / `decryptShared` functions successfully round‑trip data in Node.js, demonstrating encryption and passcode flows.
+- Full browser-based verification of service worker behavior and passcode UI was not performed.
+
+## 5. Summary & recommendations
+- Establish dependency management and run regular `npm audit` scans.
+- Add automated static security analysis to CI once network access allows dependency installation.
+- Serve official DOMPurify bundle locally and verify its integrity.
+- Configure production server or service worker to enforce strict `Cache-Control` headers on sensitive endpoints.
+- Continue to avoid committing real credentials; use environment variables and templates for secrets.
+
