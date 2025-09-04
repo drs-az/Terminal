@@ -27,3 +27,7 @@
 - Configure production server or service worker to enforce strict `Cache-Control` headers on sensitive endpoints.
 - Continue to avoid committing real credentials; use environment variables and templates for secrets.
 
+## 6. Staging environment review
+- `npm test` confirmed the service worker injects `Cache-Control: no-store` for `/config.json` requests.
+- Encryption helpers (`encryptForShare`/`decryptShared`) successfully round-trip data in Node, validating passcode-derived AES-256-GCM behavior.
+- Browser DevTools verification of passcode flows and HTTP headers was not executed in this environment; staging deployments should still be manually inspected.
