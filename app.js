@@ -475,6 +475,7 @@ function printNote(n, indexShown){
         a.href = att;
         a.textContent = att;
         a.target = '_blank';
+        a.rel = 'noopener noreferrer';
         a.style.marginRight = '6px';
         adiv.appendChild(a);
       }
@@ -994,6 +995,7 @@ cmd.readnote = (args)=>{
         a.href = att;
         a.textContent = att;
         a.target = '_blank';
+        a.rel = 'noopener noreferrer';
         a.style.marginRight = '6px';
         adiv.appendChild(a);
       }
