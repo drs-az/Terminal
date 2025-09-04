@@ -14,8 +14,7 @@ const crypto = require('crypto');
     'collaboration.js',
     'third_party/strip-metadata.js',
     'icons/icon-192.png',
-    'icons/icon-512.png',
-    'config.json'
+    'icons/icon-512.png'
   ];
 
 const root = __dirname;
@@ -23,7 +22,7 @@ const root = __dirname;
 function createManifest() {
   const hash = crypto.createHash('sha256');
 
-  // Write config.json from environment variables
+  // Write config.json from environment variables (not part of the asset manifest)
   const config = {
     clientId: process.env.GDRIVE_CLIENT_ID || '',
     apiKey: process.env.GDRIVE_API_KEY || ''

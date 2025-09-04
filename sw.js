@@ -2,7 +2,8 @@
 importScripts('./asset-manifest.js');
 
 const CACHE_NAME = `terminal-list-${self.__ASSET_MANIFEST.version}`;
-const ASSETS = self.__ASSET_MANIFEST.files;
+// Exclude config.json from precache assets
+const ASSETS = self.__ASSET_MANIFEST.files.filter(f => f !== './config.json');
 const NO_STORE_PATHS = ['/config.json'];
 
 self.addEventListener('install', (event) => {
