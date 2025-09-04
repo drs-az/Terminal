@@ -568,7 +568,7 @@ cmd.help = () => {
   println('  - import — paste JSON to replace all data');
   println('  - importshare — paste shared item JSON and decrypt with a passcode');
   println('  - wipe — clear all data (with confirm)');
-  println('  - genpass — generate a random 64-character passcode');
+  println('  - genpass — generate a random 64-character passcode using letters, digits, and symbols');
   println('  - setpass — set or clear passcode');
   println('  - nopass — allow saving without a passcode');
   println('  - lock — clear decrypted data from memory');
@@ -1236,9 +1236,10 @@ cmd.importshare = async ()=>{
 cmd.wipe = ()=> openModal();
 
 cmd.genpass = ()=>{
-  const bytes = new Uint8Array(32);
-  crypto.getRandomValues(bytes);
-  const pass = Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+  const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;:,.<>/?';
+  const values = new Uint8Array(64);
+  crypto.getRandomValues(values);
+  const pass = Array.from(values, v => charset[v % charset.length]).join('');
   println(pass);
 };
 
