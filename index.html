@@ -7,8 +7,8 @@
   <!-- PWA refs -->
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#32cd32">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; script-src 'self' https://apis.google.com https://cdn.jsdelivr.net; style-src 'self';"/>
-  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js" crossorigin="anonymous"></script>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; script-src 'self' https://apis.google.com; style-src 'self'; connect-src 'self' https://www.googleapis.com; object-src 'none';"/>
+  <script src="third_party/purify.min.js"></script>
   <script src="sanitize.js"></script>
   <link rel="stylesheet" href="styles.css">
 </head>
