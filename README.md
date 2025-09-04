@@ -145,6 +145,13 @@ Type commands into the input bar or directly in the terminal view.
 - `replymsg <id|#>` — reply to a message
 - `delmsg <id|#>` — delete a message
 
+### Passwords
+- `passlist` — list password sets
+- `passnew` — add a password set
+- `passedit <id|#>` — edit a password set
+- `passdel <id|#>` — delete a password set
+- `passview <id|#>` — show a password set
+
 ### Security & Data
 - `stats` — summary counts
 - `clear` — clear the display
