@@ -12,7 +12,6 @@ const crypto = require('crypto');
     'encryption.js',
     'scrypt.js',
     'collaboration.js',
-    'third_party/purify.min.js',
     'third_party/strip-metadata.js',
     'icons/icon-192.png',
     'icons/icon-512.png',
