@@ -1332,6 +1332,9 @@ cmd.lock = ()=>{
   passKey = null;
   locked = true;
   lastTaskListCache = null; lastNoteListCache = null;
+  localStorage.removeItem(HISTORY_KEY);
+  history = [];
+  historyIndex = 0;
   println('locked.', 'ok');
   setTimeout(() => location.reload(), 0);
 };
