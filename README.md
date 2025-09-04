@@ -82,8 +82,27 @@ Then visit: [http://localhost:8080](http://localhost:8080)
 Your browser will prompt you to install the PWA for a native-like experience.
 
 ### 3. Hosting
-You can host the files on GitHub Pages, Netlify, Vercel, or any static web server.  
+You can host the files on GitHub Pages, Netlify, Vercel, or any static web server.
 Once hosted over HTTPS, you can install Terminal List on multiple devices.
+
+#### Production Server Headers
+The service worker treats some endpoints (like `config.json`) as sensitive and
+adds `Cache-Control: no-store` to their responses. Configure your production
+server to send the same header so these files are never cached. For example,
+with **nginx**:
+
+```
+location /config.json {
+  add_header Cache-Control "no-store";
+}
+```
+
+Verify the header with:
+
+```
+curl -I https://your-domain/config.json
+# Expect: Cache-Control: no-store
+```
 
 ## Commands
 
