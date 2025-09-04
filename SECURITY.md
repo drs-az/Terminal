@@ -1,8 +1,9 @@
 # Security Audit Report
 
 ## 1. Dependency vulnerability scan
-- `npm audit` could not run: repository lacks `package.json`/lockfile.
-- No JavaScript package dependencies detected; consider adding a lockfile if packages are introduced.
+- The repository includes `package.json` and `package-lock.json`.
+- Run `npm audit` regularly to scan for vulnerable dependencies.
+- Update and commit lockfiles (e.g., via `npm audit fix` or `npm update`) as part of routine security maintenance.
 
 ## 2. Static code analysis
 - Attempted to install and run `eslint` with security rules, but npm registry access was denied (`403 Forbidden`).
