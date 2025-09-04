@@ -568,6 +568,7 @@ cmd.help = () => {
   println('  - import — paste JSON to replace all data');
   println('  - importshare — paste shared item JSON and decrypt with a passcode');
   println('  - wipe — clear all data (with confirm)');
+  println('  - genpass — generate a random 64-character passcode');
   println('  - setpass — set or clear passcode');
   println('  - nopass — allow saving without a passcode');
   println('  - lock — clear decrypted data from memory');
@@ -1231,8 +1232,15 @@ cmd.importshare = async ()=>{
   }catch(e){
     println('import failed: ' + e.message, 'error');
   }
-};
+}; 
 cmd.wipe = ()=> openModal();
+
+cmd.genpass = ()=>{
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  const pass = Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+  println(pass);
+};
 
 cmd.setpass = async ()=>{
   if (locked){ println('unlock first', 'error'); return; }
