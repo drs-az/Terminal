@@ -91,7 +91,18 @@ async function saveState(state){
     localStorage.setItem(STORE_KEY_V2, JSON.stringify(payload));
   }catch(err){ console.error(err); }
 }
-function makeId(){ return Math.random().toString(36).slice(2,8); }
+function makeId(){
+  // Generate a 6-character URL-safe ID using cryptographically secure random values.
+  const arr = new Uint32Array(1);
+  const max = 36 ** 6;
+  const limit = Math.floor(0x100000000 / max) * max;
+  let n;
+  do {
+    crypto.getRandomValues(arr);
+    n = arr[0];
+  } while (n >= limit);
+  return (n % max).toString(36).padStart(6, '0');
+}
 
 let state = loadState();
 let items = state.items;
