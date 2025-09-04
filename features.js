@@ -4,6 +4,8 @@
  * and interact with the global task/note state defined in index.html.
  */
 
+import { encryptForShare, decryptShared } from './encryption.js';
+
 let getItems = () => [];
 let getNotes = () => [];
 let getMessages = () => [];
@@ -211,74 +213,84 @@ function ensureGDriveAuth() {
   });
 }
 
-function gdriveUpload() {
+async function gdriveUpload(pass) {
   const fileName = 'terminal-list-backup.json';
-  const data = JSON.stringify({
+  const data = {
     items: getItems(),
     notes: getNotes(),
-    messages: getMessages()
-  });
-  return ensureGDriveAuth()
-    .then(() =>
-      gapi.client.drive.files.list({
-        q: `name='${fileName}' and trashed=false`,
-        fields: 'files(id,name)'
-      })
-    )
-    .then(res => {
-      const fileId = res.result.files && res.result.files[0] && res.result.files[0].id;
-      const blob = new Blob([data], { type: 'application/json' });
-      const metadata = { name: fileName, mimeType: 'application/json' };
-      return fileId
-        ? gapi.client.drive.files.update({ fileId, resource: metadata, media: { body: blob } })
-        : gapi.client.drive.files.create({ resource: metadata, media: { body: blob } });
-    })
-    .then(() => 'uploaded')
-    .catch(err => { throw err && err.result ? err.result.error : err; });
-}
-
-function gdriveDownload() {
-  const fileName = 'terminal-list-backup.json';
-  return ensureGDriveAuth()
-    .then(() => gapi.client.drive.files.list({
+    messages: getMessages(),
+    passwords: getPasswords()
+  };
+  const encPayload = await encryptForShare(data, pass);
+  const body = JSON.stringify({ enc: encPayload });
+  try {
+    await ensureGDriveAuth();
+    const res = await gapi.client.drive.files.list({
       q: `name='${fileName}' and trashed=false`,
       fields: 'files(id,name)'
-    }))
-    .then(res => {
-      const fileId = res.result.files && res.result.files[0] && res.result.files[0].id;
-      if (!fileId) throw 'no-data';
-      return gapi.client.drive.files.get({ fileId, alt: 'media' });
-    })
-    .then(res => {
-      const data = typeof res.body === 'string' ? JSON.parse(res.body) : res.result;
-      if (typeof saveItems === 'function') saveItems(data.items || []);
-      if (typeof saveNotes === 'function') saveNotes(data.notes || []);
-      if (typeof saveMessages === 'function') saveMessages(data.messages || []);
-      if (typeof rescheduleAllNotifications === 'function') rescheduleAllNotifications();
-      return 'downloaded';
     });
+    const fileId = res.result.files && res.result.files[0] && res.result.files[0].id;
+    const blob = new Blob([body], { type: 'application/json' });
+    const metadata = { name: fileName, mimeType: 'application/json' };
+    if (fileId) {
+      await gapi.client.drive.files.update({ fileId, resource: metadata, media: { body: blob } });
+    } else {
+      await gapi.client.drive.files.create({ resource: metadata, media: { body: blob } });
+    }
+    return 'uploaded';
+  } catch (err) {
+    throw err && err.result ? err.result.error : err;
+  }
 }
 
-function syncWithCloud(provider = 'local', mode = 'upload') {
+async function gdriveDownload(pass) {
+  const fileName = 'terminal-list-backup.json';
+  await ensureGDriveAuth();
+  const list = await gapi.client.drive.files.list({
+    q: `name='${fileName}' and trashed=false`,
+    fields: 'files(id,name)'
+  });
+  const fileId = list.result.files && list.result.files[0] && list.result.files[0].id;
+  if (!fileId) throw 'no-data';
+  const res = await gapi.client.drive.files.get({ fileId, alt: 'media' });
+  const obj = typeof res.body === 'string' ? JSON.parse(res.body) : res.result;
+  const data = obj.enc ? await decryptShared(obj.enc, pass) : obj;
+  if (typeof saveItems === 'function') saveItems(data.items || []);
+  if (typeof saveNotes === 'function') saveNotes(data.notes || []);
+  if (typeof saveMessages === 'function') saveMessages(data.messages || []);
+  if (typeof savePasswords === 'function') savePasswords(data.passwords || []);
+  if (typeof rescheduleAllNotifications === 'function') rescheduleAllNotifications();
+  return 'downloaded';
+}
+
+async function syncWithCloud(provider = 'local', mode = 'upload', pass) {
+  if (!pass) return Promise.reject('passcode-required');
   if (provider === 'gdrive') {
-    return mode === 'upload' ? gdriveUpload() : gdriveDownload();
+    return mode === 'upload' ? gdriveUpload(pass) : gdriveDownload(pass);
   }
 
   const key = `terminal-list-sync-${provider}`;
   if (mode === 'upload') {
-    const data = JSON.stringify({ items: getItems(), notes: getNotes(), messages: getMessages(), passwords: getPasswords() });
-    localStorage.setItem(key, data);
-    return Promise.resolve('uploaded');
+    const data = {
+      items: getItems(),
+      notes: getNotes(),
+      messages: getMessages(),
+      passwords: getPasswords()
+    };
+    const enc = await encryptForShare(data, pass);
+    localStorage.setItem(key, JSON.stringify({ enc }));
+    return 'uploaded';
   } else {
     const raw = localStorage.getItem(key);
     if (!raw) return Promise.reject('no-data');
-    const data = JSON.parse(raw);
+    const obj = JSON.parse(raw);
+    const data = obj.enc ? await decryptShared(obj.enc, pass) : obj;
     if (typeof saveItems === 'function') saveItems(data.items || []);
     if (typeof saveNotes === 'function') saveNotes(data.notes || []);
     if (typeof saveMessages === 'function') saveMessages(data.messages || []);
     if (typeof savePasswords === 'function') savePasswords(data.passwords || []);
     if (typeof rescheduleAllNotifications === 'function') rescheduleAllNotifications();
-    return Promise.resolve('downloaded');
+    return 'downloaded';
   }
 }
 

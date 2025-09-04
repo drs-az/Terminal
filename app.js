@@ -693,7 +693,7 @@ cmd.help = () => {
   println('  - snooze <id|#> <YYYY-MM-DD> — snooze a task to a new date');
   println('  - aquery <query> — run an advanced task query (tag/due/done/pri filters; due:overdue for past-due tasks)');
   println('  - nrich <id|#> <title>|[body]|[link]|[attachments] — edit note with rich fields; attachments are a comma-separated list of URLs or data URIs');
-  println('  - backup [provider] [upload|download] — sync data to a sandbox provider (local or gdrive)');
+  println('  - backup [provider] [upload|download] — passcode-encrypted sync to a sandbox provider (local or gdrive)');
   println('  - gdriveconfig <client_id> <api_key> — store Google Drive credentials for backup');
   println('  - themepreset <json> — apply a theme preset from JSON');
   println('  - themeexport [name] — download current theme preset');
@@ -1282,12 +1282,18 @@ cmd.gdriveconfig = (args)=>{
   println('gdrive credentials stored for this session. Keep your keys secure.', 'ok');
 };
 
-cmd.backup = (args)=>{
+cmd.backup = async (args)=>{
   const provider = args[0] || 'local';
   const mode = args[1] || 'upload';
-  syncWithCloud(provider, mode)
-    .then(()=> println(mode === 'upload' ? 'backup uploaded.' : 'backup restored.', 'ok'))
-    .catch(err => println('backup failed: ' + err, 'error'));
+  if (!passSalt){ println('no passcode set', 'error'); return; }
+  println('Enter passcode:', 'muted');
+  const pass = await getNextLine(true);
+  try {
+    await syncWithCloud(provider, mode, pass);
+    println(mode === 'upload' ? 'backup uploaded.' : 'backup restored.', 'ok');
+  } catch (err) {
+    println('backup failed: ' + err, 'error');
+  }
 };
 
 let collabSession = null;
