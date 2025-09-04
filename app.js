@@ -68,10 +68,15 @@ function loadState(){
         } else {
           passParams = { ...DEFAULT_SCRYPT_PARAMS };
         }
-        return { items: [], notes: [], messages: [] };
+        return { items: [], notes: [], messages: [], passwords: [] };
       }
       if (obj && Array.isArray(obj.items) && Array.isArray(obj.notes)){
-        return { items: obj.items, notes: obj.notes, messages: Array.isArray(obj.messages) ? obj.messages : [] };
+        return {
+          items: obj.items,
+          notes: obj.notes,
+          messages: Array.isArray(obj.messages) ? obj.messages : [],
+          passwords: Array.isArray(obj.passwords) ? obj.passwords : []
+        };
       }
     }
   }catch{}
@@ -79,17 +84,17 @@ function loadState(){
     const raw1 = localStorage.getItem(STORE_KEY_V1);
     if (raw1){
       const items = JSON.parse(raw1) || [];
-      const state = { items, notes: [], messages: [] };
+      const state = { items, notes: [], messages: [], passwords: [] };
       return state;
     }
   }catch{}
-  return { items: [], notes: [], messages: [] };
+  return { items: [], notes: [], messages: [], passwords: [] };
 }
 async function saveState(state){
   if (!passKey) throw new Error('Passcode not set');
   try{
     const iv = crypto.getRandomValues(new Uint8Array(12));
-    const data = enc.encode(JSON.stringify({ items: state.items, notes: state.notes, messages: state.messages }));
+    const data = enc.encode(JSON.stringify({ items: state.items, notes: state.notes, messages: state.messages, passwords: state.passwords }));
     const buf = await crypto.subtle.encrypt({ name:'AES-GCM', iv }, passKey, data);
     const payload = { version: 4, enc: { v:1, salt: passSalt, kdf: { name:'scrypt', ...passParams }, iv: b64(iv), data: b64(buf) } };
     localStorage.setItem(STORE_KEY_V2, JSON.stringify(payload));
@@ -131,10 +136,13 @@ state.notes = notes;
 if (needsNoteMigration) saveNotes(notes);
 let messages = state.messages || [];
 state.messages = messages;
+let passwords = state.passwords || [];
+state.passwords = passwords;
 registerDataGetters({
   items: () => items,
   notes: () => notes,
-  messages: () => messages
+  messages: () => messages,
+  passwords: () => passwords
 });
 
 // Service Worker registration and notification timers
@@ -206,6 +214,11 @@ function saveNotes(v){
 function saveMessages(v){
   messages = v;
   state.messages = v;
+  saveState(state).catch(()=>{});
+}
+function savePasswords(v){
+  passwords = v;
+  state.passwords = v;
   saveState(state).catch(()=>{});
 }
 const IMAGE_DB = 'terminal-list-images';
@@ -327,6 +340,16 @@ const msgPassInput = document.getElementById('msg-pass');
 const msgCancel = document.getElementById('msg-cancel');
 const msgShare = document.getElementById('msg-share');
 let replyingMessage = null;
+const passModal = document.getElementById('pass-modal');
+const passModalTitle = document.getElementById('pass-modal-title');
+const passTitleInput = document.getElementById('pass-title');
+const passUsernameInput = document.getElementById('pass-username');
+const passPasswordInput = document.getElementById('pass-password');
+const passWebsiteInput = document.getElementById('pass-website');
+const passNotesInput = document.getElementById('pass-notes');
+const passCancel = document.getElementById('pass-cancel');
+const passSave = document.getElementById('pass-save');
+let editingPass = null;
 const picModal = document.getElementById('pic-modal');
 const picModalImg = document.getElementById('pic-modal-img');
 const picClose = document.getElementById('pic-close');
@@ -481,6 +504,24 @@ function printMessages(arr, title){
   output.scrollTop = output.scrollHeight;
 }
 
+function printPassword(p, indexShown){
+  const idx = typeof indexShown === 'number' ? '[' + indexShown + '] ' : '';
+  const line = `${idx}(${p.id}) 🔐 ${p.title || ''} — ${p.username || ''}`;
+  const div = document.createElement('div');
+  div.className = 'line';
+  div.textContent = sanitizeHTML(line);
+  output.appendChild(div);
+}
+
+function printPasswordDetails(p){
+  println('(' + p.id + ')');
+  println('Title: ' + (p.title || ''));
+  println('Username: ' + (p.username || ''));
+  println('Password: ' + (p.password || ''));
+  println('Website: ' + (p.website || ''));
+  println('Notes: ' + (p.notes || ''));
+}
+
 /************
  * FILTER/RESOLUTION
  ************/
@@ -607,6 +648,12 @@ cmd.help = () => {
   println('  - readmsg <id|#> — read a message');
   println('  - replymsg <id|#> — reply to a message');
   println('  - delmsg <id|#> — delete a message');
+  println('');
+  println('Passwords:');
+  println('  - passnew — add a password set');
+  println('  - passedit <id> — edit a password set');
+  println('  - passdel <id> — delete a password set');
+  println('  - passview <id> — show a password set');
   println('');
   println('Security & Data:');
   println('  - stats — summary counts');
@@ -1055,6 +1102,30 @@ cmd.delmsg = (args)=>{
   println('message deleted.', 'ok');
 };
 
+cmd.passnew = ()=>{
+  showPassModal();
+};
+cmd.passedit = (args)=>{
+  const id = args[0];
+  const p = passwords.find(x=>x.id===id);
+  if (!p) return println('id does not exist', 'error');
+  showPassModal(p);
+};
+cmd.passdel = (args)=>{
+  const id = args[0];
+  const p = passwords.find(x=>x.id===id);
+  if (!p) return println('id does not exist', 'error');
+  passwords = passwords.filter(x=>x.id!==p.id);
+  savePasswords(passwords);
+  println('password deleted.','ok');
+};
+cmd.passview = (args)=>{
+  const id = args[0];
+  const p = passwords.find(x=>x.id===id);
+  if (!p) return println('id does not exist', 'error');
+  printPasswordDetails(p);
+};
+
 // General
 cmd.syntax = (args)=>{
   const topic = (args[0] || '').toLowerCase();
@@ -1145,9 +1216,11 @@ cmd.stats = ()=>{
   const open = total - done;
   const noteCount = notes.length;
   const msgCount = messages.length;
+  const passCount = passwords.length;
   println(`Tasks — Total: ${total}  Open: ${open}  Done: ${done}`);
   println(`Notes — Total: ${noteCount}`);
   println(`Messages — Total: ${msgCount}`);
+  println(`Passwords — Total: ${passCount}`);
 };
 cmd.theme = (args)=>{
   if (args.length !== 3){
@@ -1215,7 +1288,7 @@ function download(filename, text) {
   a.remove();
 }
 cmd.export = ()=>{
-  const payload = { version: 3, items, notes, messages };
+  const payload = { version: 3, items, notes, messages, passwords };
   const json = JSON.stringify(payload, null, 2);
   download('terminal-list-export.json', json);
   println('exported.', 'ok');
@@ -1242,11 +1315,12 @@ cmd.import = async ()=>{
         updatedAt: n.updatedAt,
       }));
       messages = Array.isArray(incoming.messages) ? incoming.messages : [];
+      passwords = Array.isArray(incoming.passwords) ? incoming.passwords : [];
     } else {
       throw new Error('invalid format');
     }
     messages.sort((a,b)=> new Date(b.date+' '+b.time) - new Date(a.date+' '+a.time));
-    saveItems(items); saveNotes(notes); saveMessages(messages);
+    saveItems(items); saveNotes(notes); saveMessages(messages); savePasswords(passwords);
     println('imported.', 'ok');
   }catch(e){
     println('import failed: ' + e.message, 'error');
@@ -1332,7 +1406,8 @@ cmd.lock = ()=>{
   if (!passSalt){ println('no passcode set','error'); return; }
   stopInactivityTimer();
   items = []; notes = []; messages = [];
-  state.items = items; state.notes = notes; state.messages = messages;
+  passwords = [];
+  state.items = items; state.notes = notes; state.messages = messages; state.passwords = passwords;
   passKey = null;
   locked = true;
   lastTaskListCache = null; lastNoteListCache = null;
@@ -1363,9 +1438,16 @@ cmd.unlock = async ()=>{
     const buf = await crypto.subtle.decrypt({name:'AES-GCM', iv}, key, data);
     const decoded = JSON.parse(dec.decode(new Uint8Array(buf)));
     if (decoded && Array.isArray(decoded.items) && Array.isArray(decoded.notes)){
-      state = decoded;
+      state = {
+        items: decoded.items,
+        notes: decoded.notes,
+        messages: Array.isArray(decoded.messages) ? decoded.messages : [],
+        passwords: Array.isArray(decoded.passwords) ? decoded.passwords : []
+      };
       items = state.items;
       notes = state.notes;
+      messages = state.messages;
+      passwords = state.passwords;
       passKey = key;
       passSalt = obj.enc.salt;
       passParams = params;
@@ -1517,6 +1599,49 @@ msgShare.addEventListener('click', async ()=>{
   } else {
     println(json, 'muted');
   }
+});
+function showPassModal(pass){
+  editingPass = pass || null;
+  passModalTitle.textContent = sanitizeHTML(pass ? 'Edit Password' : 'Add Password');
+  passTitleInput.value = pass ? sanitizeHTML(pass.title || '') : '';
+  passUsernameInput.value = pass ? sanitizeHTML(pass.username || '') : '';
+  passPasswordInput.value = pass ? sanitizeHTML(pass.password || '') : '';
+  passWebsiteInput.value = pass ? sanitizeHTML(pass.website || '') : '';
+  passNotesInput.value = pass ? sanitizeHTML(pass.notes || '') : '';
+  passModal.style.display = 'flex';
+  passTitleInput.focus();
+}
+function hidePassModal(){
+  passModal.style.display = 'none';
+  editingPass = null;
+}
+passCancel.addEventListener('click', hidePassModal);
+passSave.addEventListener('click', ()=>{
+  const title = passTitleInput.value.trim();
+  const username = passUsernameInput.value.trim();
+  const password = passPasswordInput.value.trim();
+  if (!title || !username || !password){
+    println('title, username, and password required','error');
+    return;
+  }
+  const website = passWebsiteInput.value.trim();
+  const notesField = passNotesInput.value.trim();
+  if (editingPass){
+    editingPass.title = title;
+    editingPass.username = username;
+    editingPass.password = password;
+    editingPass.website = website;
+    editingPass.notes = notesField;
+    println('password edited.','ok');
+    printPassword(editingPass);
+  } else {
+    const p = { id: makeId(), title, username, password, website, notes: notesField };
+    passwords.push(p);
+    println('password added.','ok');
+    printPassword(p);
+  }
+  savePasswords(passwords);
+  hidePassModal();
 });
 function showPicModal(url){
   currentPicUrl = url;
