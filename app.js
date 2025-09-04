@@ -1349,9 +1349,10 @@ cmd.backup = async (args)=>{
 let collabSession = null;
 cmd.collab = async (args)=>{
   const session = args[0];
-  if (!session) return println('usage: COLLAB <session>', 'error');
+  const secret = args[1];
+  if (!session || !secret) return println('usage: COLLAB <session> <secret>', 'error');
   const { startCollaboration } = await loadCollaboration();
-  collabSession = startCollaboration(session);
+  collabSession = await startCollaboration(session, secret);
   if (collabSession && collabSession.broadcast) collabSession.broadcast();
   println('collaboration started.', 'ok');
 };
