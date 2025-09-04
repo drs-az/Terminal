@@ -34,14 +34,14 @@ const enc = new TextEncoder();
 const dec = new TextDecoder();
 function b64(buf){ return btoa(String.fromCharCode(...new Uint8Array(buf))); }
 function b64ToBuf(str){ return Uint8Array.from(atob(str), c=>c.charCodeAt(0)); }
-// Default PBKDF2 iteration count used for deriving encryption keys. This value
-// is stored alongside encrypted data so that it can be increased in the
+// Default scrypt parameters for deriving encryption keys. These values are
+// stored alongside encrypted data so that they can be increased in the
 // future without requiring data migration.
-const DEFAULT_PBKDF2_ITERATIONS = 600_000;
+const DEFAULT_SCRYPT_PARAMS = { N: 2 ** 15, r: 8, p: 1 };
 
 let passKey = null; // CryptoKey when unlocked
 let passSalt = null; // base64 string
-let passIterations = DEFAULT_PBKDF2_ITERATIONS;
+let passParams = { ...DEFAULT_SCRYPT_PARAMS };
 let locked = false;
 
 let dicewareWords = null;
@@ -63,7 +63,11 @@ function loadState(){
         // encrypted payload present
         locked = true;
         passSalt = obj.enc.salt;
-        passIterations = obj.enc.iterations || DEFAULT_PBKDF2_ITERATIONS;
+        if (obj.enc.kdf && obj.enc.kdf.name === 'scrypt') {
+          passParams = { N: obj.enc.kdf.N, r: obj.enc.kdf.r, p: obj.enc.kdf.p };
+        } else {
+          passParams = { ...DEFAULT_SCRYPT_PARAMS };
+        }
         return { items: [], notes: [], messages: [] };
       }
       if (obj && Array.isArray(obj.items) && Array.isArray(obj.notes)){
@@ -87,7 +91,7 @@ async function saveState(state){
     const iv = crypto.getRandomValues(new Uint8Array(12));
     const data = enc.encode(JSON.stringify({ items: state.items, notes: state.notes, messages: state.messages }));
     const buf = await crypto.subtle.encrypt({ name:'AES-GCM', iv }, passKey, data);
-    const payload = { version: 4, enc: { v:1, salt: passSalt, iterations: passIterations, iv: b64(iv), data: b64(buf) } };
+    const payload = { version: 4, enc: { v:1, salt: passSalt, kdf: { name:'scrypt', ...passParams }, iv: b64(iv), data: b64(buf) } };
     localStorage.setItem(STORE_KEY_V2, JSON.stringify(payload));
   }catch(err){ console.error(err); }
 }
@@ -1316,9 +1320,9 @@ cmd.setpass = async ()=>{
   }
   const saltBytes = crypto.getRandomValues(new Uint8Array(16));
   passSalt = b64(saltBytes);
-  const { deriveKey, DEFAULT_PBKDF2_ITERATIONS } = await loadEncryption();
-  passIterations = DEFAULT_PBKDF2_ITERATIONS;
-  passKey = await deriveKey(pass, saltBytes, passIterations);
+  const { deriveKey, DEFAULT_SCRYPT_PARAMS } = await loadEncryption();
+  passParams = { ...DEFAULT_SCRYPT_PARAMS };
+  passKey = await deriveKey(pass, saltBytes, passParams);
   await saveState(state);
   println('passcode set.', 'ok');
 };
@@ -1349,9 +1353,11 @@ cmd.unlock = async ()=>{
     println('Enter passcode:', 'muted');
     const pass = await getNextLine(true);
     const saltBytes = b64ToBuf(obj.enc.salt);
-    const iterations = obj.enc.iterations || DEFAULT_PBKDF2_ITERATIONS;
-    const { deriveKey } = await loadEncryption();
-    const key = await deriveKey(pass, saltBytes, iterations);
+    const { deriveKey, DEFAULT_SCRYPT_PARAMS } = await loadEncryption();
+    const params = (obj.enc.kdf && obj.enc.kdf.name === 'scrypt')
+      ? { N: obj.enc.kdf.N, r: obj.enc.kdf.r, p: obj.enc.kdf.p }
+      : DEFAULT_SCRYPT_PARAMS;
+    const key = await deriveKey(pass, saltBytes, params);
     const iv = b64ToBuf(obj.enc.iv);
     const data = b64ToBuf(obj.enc.data);
     const buf = await crypto.subtle.decrypt({name:'AES-GCM', iv}, key, data);
@@ -1362,7 +1368,7 @@ cmd.unlock = async ()=>{
       notes = state.notes;
       passKey = key;
       passSalt = obj.enc.salt;
-      passIterations = iterations;
+      passParams = params;
       locked = false;
       println('unlocked.', 'ok');
       startInactivityTimer();
