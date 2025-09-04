@@ -1,6 +1,6 @@
 # Terminal List
 
-**Terminal List** is a browser-based Progressive Web App (PWA) for managing tasks and notes in a terminal-style interface.
+**Terminal List** is a browser-based Progressive Web App (PWA) for managing tasks, notes and messages in a terminal-style interface.
 It supports optional passcode protection with AES-256 encryption, JSON export/import, due-date notifications, customizable themes, and an emergency data wipe function.
 
 ## Features
