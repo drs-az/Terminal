@@ -255,8 +255,14 @@ async function loadImageBlob(id){
     req.onerror = ()=>resolve(null);
   });
 }
+// Only allow a small set of safe image types. If additional formats are enabled
+// in the future, strip metadata or sanitize images server-side to avoid XSS or
+// tracking vectors.
+const ALLOWED_IMAGE_TYPES = ['image/png','image/jpeg','image/gif'];
 function isImageAttachment(a){
-  return a && (a.startsWith('data:image') || a.startsWith('idb:'));
+  if (!a) return false;
+  if (a.startsWith('idb:')) return true;
+  return ALLOWED_IMAGE_TYPES.some(t=>a.startsWith(`data:${t}`));
 }
 async function resolveAttachmentUrl(a){
   if (a.startsWith('idb:')){
@@ -372,7 +378,7 @@ function showAttachmentError(msg){
 }
 function handleAttachmentFiles(fileList){
   Array.from(fileList).forEach(file=>{
-    if (!file.type.startsWith('image/')){
+    if (!ALLOWED_IMAGE_TYPES.includes(file.type)){
       showAttachmentError('Unsupported file type');
       return;
     }
