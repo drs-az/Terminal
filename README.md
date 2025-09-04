@@ -242,7 +242,7 @@ exportThemePreset('my-theme'); // downloads my-theme.json
 ### Collaboration Channel
 ```js
 import { startCollaboration } from './collaboration.js';
-const collab = startCollaboration('session1', 'shared-secret');
+const collab = await startCollaboration('session1', 'shared-secret');
 await collab.broadcast(); // sync current tasks/notes to other tabs with same session and secret
 ```
 
