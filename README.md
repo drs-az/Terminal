@@ -1,6 +1,6 @@
-# Terminal List
+# Terminal
 
-**Terminal List** is a browser-based Progressive Web App (PWA) for managing tasks, notes and messages in a terminal-style interface.
+**Terminal** is a browser-based Progressive Web App (PWA) for managing tasks, notes and messages in a terminal-style interface.
 It requires a passcode before storing any data and encrypts everything with AES-256-GCM. The app also supports JSON export/import, due-date notifications, customizable themes, and an emergency data wipe function.
 
 ## Features
@@ -26,7 +26,7 @@ It requires a passcode before storing any data and encrypts everything with AES-
 ## Project Structure
 
 ```
-Terminal-List/
+Terminal/
  ├── index.html              # PWA shell and UI
  ├── app.js                  # Core application logic
  ├── features.js             # Feature helpers (recurring reminders, cloud sync, etc.)
