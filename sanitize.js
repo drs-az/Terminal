@@ -1,9 +1,9 @@
 (function(global){
-  function sanitize(input){
+  const ALLOWED_TAGS = ['b','i','em','strong','a','p','br','ul','ol','li'];
+  const ALLOWED_ATTR = { a: ['href','target','rel'] };
+  function sanitizeHTML(input){
     if (input === undefined || input === null) return '';
-    const div = document.createElement('div');
-    div.innerHTML = input;
-    return div.textContent || '';
+    return DOMPurify.sanitize(input, {ALLOWED_TAGS, ALLOWED_ATTR});
   }
-  global.sanitize = sanitize;
+  global.sanitizeHTML = sanitizeHTML;
 })(window);

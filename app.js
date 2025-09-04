@@ -331,7 +331,7 @@ let currentPicUrl = '';
 function showAttachmentError(msg){
   const err = document.createElement('div');
   err.className = 'error';
-  err.textContent = sanitize(msg);
+  err.textContent = sanitizeHTML(msg);
   noteAttachmentsPreview.appendChild(err);
   setTimeout(()=>err.remove(),2000);
 }
@@ -396,7 +396,7 @@ noteModal.addEventListener('paste', e=>{
 function println(text, cls){
   const div = document.createElement('div');
   div.className = 'line' + (cls ? ' ' + cls : '');
-  div.textContent = sanitize(text);
+  div.textContent = sanitizeHTML(text);
   output.appendChild(div);
   output.scrollTop = output.scrollHeight;
 }
@@ -414,7 +414,7 @@ function printTask(t, indexShown){
   const line = `${idx}(${t.id}) ${box} ${t.text}${tags}${due}${pri}${noteBadge}`;
   const div = document.createElement('div');
   div.className = 'line' + (t.done ? ' task-done' : '');
-  div.textContent = sanitize(line);
+  div.textContent = sanitizeHTML(line);
   output.appendChild(div);
 }
 function printList(arr, title){
@@ -430,7 +430,7 @@ function printNote(n, indexShown){
   const line = `${idx}(${n.id}) 📝 ${n.title || ''} — ${n.description || ''}${tags}${taskLink}`;
   const div = document.createElement('div');
   div.className = 'line';
-  div.textContent = sanitize(line);
+  div.textContent = sanitizeHTML(line);
   output.appendChild(div);
   if (n.attachments && n.attachments.length){
     const adiv = document.createElement('div');
@@ -446,7 +446,7 @@ function printNote(n, indexShown){
       } else {
         const a = document.createElement('a');
         a.href = att;
-        a.textContent = sanitize(att);
+        a.textContent = sanitizeHTML(att);
         a.target = '_blank';
         a.style.marginRight = '6px';
         adiv.appendChild(a);
@@ -467,7 +467,7 @@ function printMessage(m, indexShown){
   const line = `${idx}(${m.id}) ${m.from} -> ${m.to} : ${m.subject || ''} [${m.date} ${m.time}]`;
   const div = document.createElement('div');
   div.className = 'line';
-  div.textContent = sanitize(line);
+  div.textContent = sanitizeHTML(line);
   output.appendChild(div);
 }
 function printMessages(arr, title){
@@ -941,7 +941,7 @@ cmd.readnote = (args)=>{
       } else {
         const a = document.createElement('a');
         a.href = att;
-        a.textContent = sanitize(att);
+        a.textContent = sanitizeHTML(att);
         a.target = '_blank';
         a.style.marginRight = '6px';
         adiv.appendChild(a);
@@ -1415,7 +1415,7 @@ command.addEventListener('keydown', (e)=>{
     } else {
       if (historyIndex < history.length) historyIndex++;
     }
-    command.value = sanitize(history[historyIndex] || '');
+    command.value = sanitizeHTML(history[historyIndex] || '');
     e.preventDefault();
     return;
   }
@@ -1442,15 +1442,15 @@ btnOK.addEventListener('click', ()=>{
 
 function showNoteModal(note){
   editingNote = note || null;
-  noteModalTitle.textContent = sanitize(note ? 'Edit Note' : 'Add Note');
-  noteTitleInput.value = note ? sanitize(note.title || '') : '';
-  noteDescriptionInput.value = note ? sanitize(note.description || '') : '';
-  noteLinksInput.value = note ? sanitize((note.links || []).join(', ')) : '';
-  noteAttachmentsInput.value = note ? sanitize((note.attachments || []).filter(a=>!a.startsWith('idb:')).join(', ')) : '';
+  noteModalTitle.textContent = sanitizeHTML(note ? 'Edit Note' : 'Add Note');
+  noteTitleInput.value = note ? sanitizeHTML(note.title || '') : '';
+  noteDescriptionInput.value = note ? sanitizeHTML(note.description || '') : '';
+  noteLinksInput.value = note ? sanitizeHTML((note.links || []).join(', ')) : '';
+  noteAttachmentsInput.value = note ? sanitizeHTML((note.attachments || []).filter(a=>!a.startsWith('idb:')).join(', ')) : '';
   noteAttachmentsPreview.innerHTML = '';
   noteAttachmentsFiles.value = '';
   pendingAttachmentFiles = [];
-  noteBodyInput.value = note ? sanitize(note.body || '') : '';
+  noteBodyInput.value = note ? sanitizeHTML(note.body || '') : '';
   noteModal.style.display = 'flex';
   noteTitleInput.focus();
 }
@@ -1463,14 +1463,14 @@ function hideNoteModal(){
 }
 function showMessageModal(prefill){
   replyingMessage = prefill || null;
-  msgModalTitle.textContent = sanitize(prefill ? 'Reply Message' : 'Send Message');
-  msgFromInput.value = prefill ? sanitize(prefill.to || '') : '';
-  msgToInput.value = prefill ? sanitize(prefill.from || '') : '';
-  msgSubjectInput.value = prefill ? sanitize(prefill.subject || '') : '';
+  msgModalTitle.textContent = sanitizeHTML(prefill ? 'Reply Message' : 'Send Message');
+  msgFromInput.value = prefill ? sanitizeHTML(prefill.to || '') : '';
+  msgToInput.value = prefill ? sanitizeHTML(prefill.from || '') : '';
+  msgSubjectInput.value = prefill ? sanitizeHTML(prefill.subject || '') : '';
   const now = new Date();
-  msgDateInput.value = sanitize(now.toISOString().slice(0,10));
-  msgTimeInput.value = sanitize(now.toTimeString().slice(0,5));
-  msgBodyInput.value = prefill ? sanitize(prefill.message || '') : '';
+  msgDateInput.value = sanitizeHTML(now.toISOString().slice(0,10));
+  msgTimeInput.value = sanitizeHTML(now.toTimeString().slice(0,5));
+  msgBodyInput.value = prefill ? sanitizeHTML(prefill.message || '') : '';
   msgPassInput.value = '';
   msgModal.style.display = 'flex';
   msgFromInput.focus();
@@ -1569,7 +1569,7 @@ const installHelp = document.getElementById('install-help');
 const installClose = document.getElementById('install-close');
 let deferredPrompt = null;
 
-function setStatus(s){ if (installStatus) installStatus.textContent = sanitize(s); }
+function setStatus(s){ if (installStatus) installStatus.textContent = sanitizeHTML(s); }
 
 // Register SW and wait until it's controlling the page
 if ('serviceWorker' in navigator) {
