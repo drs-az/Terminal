@@ -1,5 +1,5 @@
 self.__ASSET_MANIFEST = {
-  "version": "bdde3b68",
+  "version": "56d516fc",
   "files": [
     "./",
     "./index.html",
@@ -10,7 +10,6 @@ self.__ASSET_MANIFEST = {
     "./encryption.js",
     "./scrypt.js",
     "./collaboration.js",
-    "./third_party/purify.min.js",
     "./icons/icon-192.png",
     "./icons/icon-512.png",
     "./config.json"

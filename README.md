@@ -181,7 +181,7 @@ Type commands into the input bar or directly in the terminal view. Use `help` to
 - `gdriveconfig <client_id> <api_key>` — store Google Drive credentials for backup
 - `themepreset <json>` — apply a theme preset from JSON
 - `themeexport [name]` — download current theme preset
-- `collab <session>` — join a collaboration channel and broadcast tasks/notes
+- `collab <session> <secret>` — join a collaboration channel and broadcast tasks/notes
 
 ## Feature Helpers
 
@@ -242,7 +242,7 @@ exportThemePreset('my-theme'); // downloads my-theme.json
 ### Collaboration Channel
 ```js
 import { startCollaboration } from './collaboration.js';
-const collab = startCollaboration('session1', 'shared-secret');
+const collab = await startCollaboration('session1', 'shared-secret');
 await collab.broadcast(); // sync current tasks/notes to other tabs with same session and secret
 ```
 
