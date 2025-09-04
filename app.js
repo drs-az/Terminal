@@ -265,6 +265,14 @@ async function resolveAttachmentUrl(a){
   }
   return a;
 }
+function isSafeUrl(url){
+  try{
+    const u = new URL(url);
+    return u.protocol === 'http:' || u.protocol === 'https:' || u.protocol === 'mailto:';
+  }catch{
+    return false;
+  }
+}
 const THEME_KEY = 'terminal-theme';
 function applyTheme(t){
   const root = document.documentElement.style;
@@ -470,7 +478,7 @@ function printNote(n, indexShown){
         img.style.marginRight = '6px';
         resolveAttachmentUrl(att).then(url=>{ if (url) img.src = url; });
         adiv.appendChild(img);
-      } else {
+      } else if (isSafeUrl(att)) {
         const a = document.createElement('a');
         a.href = att;
         a.textContent = att;
@@ -478,6 +486,8 @@ function printNote(n, indexShown){
         a.rel = 'noopener noreferrer';
         a.style.marginRight = '6px';
         adiv.appendChild(a);
+      } else {
+        console.warn('Skipping unsafe attachment URL:', att);
       }
     });
     output.appendChild(adiv);
@@ -990,7 +1000,7 @@ cmd.readnote = (args)=>{
         img.style.marginRight = '6px';
         resolveAttachmentUrl(att).then(url=>{ if (url) img.src = url; });
         adiv.appendChild(img);
-      } else {
+      } else if (isSafeUrl(att)) {
         const a = document.createElement('a');
         a.href = att;
         a.textContent = att;
@@ -998,6 +1008,8 @@ cmd.readnote = (args)=>{
         a.rel = 'noopener noreferrer';
         a.style.marginRight = '6px';
         adiv.appendChild(a);
+      } else {
+        console.warn('Skipping unsafe attachment URL:', att);
       }
     });
     output.appendChild(adiv);
@@ -1626,7 +1638,11 @@ passSave.addEventListener('click', ()=>{
     println('title, username, and password required','error');
     return;
   }
-  const website = passWebsiteInput.value.trim();
+  let website = passWebsiteInput.value.trim();
+  if (website && !isSafeUrl(website)){
+    console.warn('Skipping unsafe website URL:', website);
+    website = '';
+  }
   const notesField = passNotesInput.value.trim();
   if (editingPass){
     editingPass.title = title;
@@ -1665,8 +1681,16 @@ noteSave.addEventListener('click', async ()=>{
     println('title and description required','error');
     return;
   }
-  const links = noteLinksInput.value.split(',').map(s=>s.trim()).filter(Boolean);
-  let attachments = noteAttachmentsInput.value.split(',').map(s=>s.trim()).filter(Boolean);
+  const links = noteLinksInput.value.split(',').map(s=>s.trim()).filter(u=>{
+    if (isSafeUrl(u)) return true;
+    console.warn('Skipping unsafe link:', u);
+    return false;
+  });
+  let attachments = noteAttachmentsInput.value.split(',').map(s=>s.trim()).filter(u=>{
+    if (isSafeUrl(u)) return true;
+    console.warn('Skipping unsafe attachment URL:', u);
+    return false;
+  });
   if (editingNote){
     const existing = (editingNote.attachments || []).filter(a=>a.startsWith('idb:'));
     attachments = existing.concat(attachments);
