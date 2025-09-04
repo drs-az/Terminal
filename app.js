@@ -530,6 +530,13 @@ function printPassword(p, indexShown){
   output.appendChild(div);
 }
 
+function printPasswords(arr, title){
+  if (title) println(title, 'muted');
+  if (!arr.length){ println('— no passwords —', 'muted'); return; }
+  arr.forEach((p,i)=>printPassword(p,i+1));
+  output.scrollTop = output.scrollHeight;
+}
+
 function printPasswordDetails(p){
   println('(' + p.id + ')');
   println('Title: ' + (p.title || ''));
@@ -590,6 +597,10 @@ function listFilteredNotes(filter){
 function listMessages(){
   return [...messages].sort((a,b)=> new Date(b.date+' '+b.time) - new Date(a.date+' '+a.time));
 }
+
+function listPasswords(){
+  return [...passwords].sort((a,b)=> (a.title||'').localeCompare(b.title||''));
+}
 function resolveTaskRef(ref, currentList){
   if (!ref) return null;
   const byId = items.find(t=>t.id === ref);
@@ -620,6 +631,18 @@ function resolveMessageRef(ref, currentList){
     const n = parseInt(ref,10);
     if (currentList && n>=1 && n<=currentList.length) return currentList[n-1];
     if (n>=1 && n<=messages.length) return messages[n-1];
+  }
+  return null;
+}
+
+function resolvePasswordRef(ref, currentList){
+  if (!ref) return null;
+  const byId = passwords.find(p=>p.id === ref);
+  if (byId) return byId;
+  if (/^\d+$/.test(ref)){
+    const n = parseInt(ref,10);
+    if (currentList && n>=1 && n<=currentList.length) return currentList[n-1];
+    if (n>=1 && n<=passwords.length) return passwords[n-1];
   }
   return null;
 }
@@ -667,10 +690,11 @@ cmd.help = () => {
   println('  - delmsg <id|#> — delete a message');
   println('');
   println('Passwords:');
+  println('  - passlist — list password sets');
   println('  - passnew — add a password set');
-  println('  - passedit <id> — edit a password set');
-  println('  - passdel <id> — delete a password set');
-  println('  - passview <id> — show a password set');
+  println('  - passedit <id|#> — edit a password set');
+  println('  - passdel <id|#> — delete a password set');
+  println('  - passview <id|#> — show a password set');
   println('');
   println('Security & Data:');
   println('  - stats — summary counts');
@@ -1122,26 +1146,31 @@ cmd.delmsg = (args)=>{
   println('message deleted.', 'ok');
 };
 
+let lastPassListCache = null;
+cmd.passlist = ()=>{
+  lastPassListCache = listPasswords();
+  printPasswords(lastPassListCache, 'PASSWORDS');
+};
 cmd.passnew = ()=>{
   showPassModal();
 };
 cmd.passedit = (args)=>{
-  const id = args[0];
-  const p = passwords.find(x=>x.id===id);
+  const ref = args[0];
+  const p = resolvePasswordRef(ref, lastPassListCache);
   if (!p) return println('id does not exist', 'error');
   showPassModal(p);
 };
 cmd.passdel = (args)=>{
-  const id = args[0];
-  const p = passwords.find(x=>x.id===id);
+  const ref = args[0];
+  const p = resolvePasswordRef(ref, lastPassListCache);
   if (!p) return println('id does not exist', 'error');
   passwords = passwords.filter(x=>x.id!==p.id);
   savePasswords(passwords);
   println('password deleted.','ok');
 };
 cmd.passview = (args)=>{
-  const id = args[0];
-  const p = passwords.find(x=>x.id===id);
+  const ref = args[0];
+  const p = resolvePasswordRef(ref, lastPassListCache);
   if (!p) return println('id does not exist', 'error');
   printPasswordDetails(p);
 };
@@ -1215,6 +1244,26 @@ cmd.syntax = (args)=>{
     msgs: [
       'MSGS',
       '  List messages in reverse chronological order'
+    ],
+    passlist: [
+      'PASSLIST',
+      '  List password sets'
+    ],
+    passnew: [
+      'PASSNEW',
+      '  Add a password set'
+    ],
+    passedit: [
+      'PASSEDIT <id|#>',
+      '  Edit a password set'
+    ],
+    passdel: [
+      'PASSDEL <id|#>',
+      '  Delete a password set'
+    ],
+    passview: [
+      'PASSVIEW <id|#>',
+      '  Show a password set'
     ]
   };
   if (!topic || !info[topic]) {
@@ -1229,6 +1278,7 @@ cmd.clear = ()=>{
   lastTaskListCache = null;
   lastNoteListCache = null;
   lastMsgListCache = null;
+  lastPassListCache = null;
 };
 cmd.stats = ()=>{
   const total = items.length;
