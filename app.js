@@ -157,10 +157,16 @@ function rescheduleAllNotifications(){
 }
 
 document.addEventListener('visibilitychange', ()=>{
-  if (document.visibilityState === 'hidden') clearAllTimers();
+  if (document.visibilityState === 'hidden') {
+    clearAllTimers();
+    if (!locked) cmd.lock();
+  }
 });
 
-window.addEventListener('beforeunload', clearAllTimers);
+window.addEventListener('beforeunload', () => {
+  clearAllTimers();
+  if (!locked) cmd.lock();
+});
 
 if (navigator.serviceWorker) {
   navigator.serviceWorker.addEventListener('controllerchange', () => {
@@ -253,6 +259,25 @@ let awaitingLine = false;
 const HISTORY_KEY = 'command-history';
 let history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
 let historyIndex = history.length;
+
+const INACTIVITY_MS = 5 * 60 * 1000;
+let inactivityTimer = null;
+function resetInactivityTimer(){
+  clearTimeout(inactivityTimer);
+  inactivityTimer = setTimeout(()=>{
+    if (!locked) cmd.lock();
+  }, INACTIVITY_MS);
+}
+function startInactivityTimer(){
+  command.addEventListener('keydown', resetInactivityTimer);
+  command.addEventListener('pointerdown', resetInactivityTimer);
+  resetInactivityTimer();
+}
+function stopInactivityTimer(){
+  command.removeEventListener('keydown', resetInactivityTimer);
+  command.removeEventListener('pointerdown', resetInactivityTimer);
+  clearTimeout(inactivityTimer);
+}
 const modal = document.getElementById('modal');
 const btnCancel = document.getElementById('btn-cancel');
 const btnOK = document.getElementById('btn-confirm');
@@ -1283,6 +1308,7 @@ cmd.setpass = async ()=>{
 cmd.lock = ()=>{
   if (locked){ println('already locked','muted'); return; }
   if (!passSalt){ println('no passcode set','error'); return; }
+  stopInactivityTimer();
   items = []; notes = []; messages = [];
   state.items = items; state.notes = notes; state.messages = messages;
   passKey = null;
@@ -1316,6 +1342,7 @@ cmd.unlock = async ()=>{
       passSalt = obj.enc.salt;
       locked = false;
       println('unlocked.', 'ok');
+      startInactivityTimer();
     } else {
       throw new Error('bad data');
     }
@@ -1576,11 +1603,6 @@ window.addEventListener('appinstalled', () => {
   installBtn.classList.remove('enabled');
 });
 
-window.addEventListener('beforeunload', () => {
-  for (const timer of recurringTimers.values()) {
-    clearInterval(timer);
-  }
-});
 
 /************
  * VIEWPORT PINNING
@@ -1610,6 +1632,8 @@ if (!localStorage.getItem('terminal-list-initialized-v4')){
 }
 if (!passSalt) println('No passcode set. Use SETPASS to protect stored data. Saving disabled until a passcode is set.', 'error');
 if (locked) println('Data is locked. Type UNLOCK to access.', 'muted');
+
+if (!locked) startInactivityTimer();
 
 // Focus on output tap
 output.addEventListener('pointerdown', ()=>command.focus());
