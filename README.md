@@ -133,7 +133,7 @@ Type commands into the input bar or directly in the terminal view.
 - `import` — paste JSON to replace all data
 - `importshare` — paste shared item JSON and decrypt with a passcode
 - `wipe` — clear all data (with confirm)
-- `genpass` — generate a random 64-character passcode
+- `genpass [-w <n>] [-s <sep>]` — generate a Diceware passphrase (default: 8 words, space-separated)
 - `setpass` — set or clear passcode
 - `nopass` — allow saving without a passcode
 - `lock` — clear decrypted data from memory
