@@ -33,11 +33,17 @@ Terminal-List/
  ├── collaboration.js        # Encrypted BroadcastChannel syncing
  ├── encryption.js           # AES-256-GCM helpers
  ├── sanitize.js             # Minimal HTML sanitizer
+ ├── third_party/            # External libraries
+ │     ├── strip-metadata.js # Removes image metadata from uploads
+ │     └── purify.min.js     # DOMPurify HTML sanitizer (must be supplied)
  ├── build-manifest.js       # Generates asset manifest and config.json
  ├── asset-manifest.js       # Generated list of cached assets
  ├── manifest.webmanifest    # PWA manifest file
  ├── sw.js                   # Service worker for offline support
  ├── config.template.json    # Template for runtime config (copy to config.json)
+ ├── test/                   # Node-based tests
+ │     ├── cache-header.test.js
+ │     └── strip-metadata.test.js
  └── icons/                  # App icons
       ├── icon-192.png
       └── icon-512.png
@@ -56,6 +62,14 @@ node build-manifest.js
 `build-manifest.js` hashes core assets, writes `asset-manifest.js`, and creates a `config.json` file using the `GDRIVE_CLIENT_ID` and `GDRIVE_API_KEY` environment variables. The service worker uses the manifest's version for cache busting.
 
 `config.json` is ignored by Git; see `config.template.json` for the expected structure. The app fetches this file at runtime to supply Google Drive credentials to `setGDriveCredentials`.
+
+## Testing
+
+Run the Node-based checks to verify service worker headers and image metadata stripping:
+
+```bash
+npm test
+```
 
 ## Installation / Running
 
@@ -255,6 +269,7 @@ await collab.broadcast(); // sync current tasks/notes to other tabs with same se
    your data so the cost can be increased in future versions).
 - Remember your passcode! Without it, encrypted data cannot be recovered.
 - Google Drive credentials configured via `GDRIVECONFIG` live only in memory; never commit API keys or share them publicly.
+- For HTML sanitization, provide a trusted DOMPurify build at `third_party/purify.min.js` or load it from a CDN with an SRI hash. Without it, the app falls back to basic escaping.
 - When updating the Google API script, recompute its Subresource Integrity hash using:
   `curl -s https://apis.google.com/js/api.js | openssl dgst -sha384 -binary | openssl base64 -A`
   and replace the `integrity` value in `index.html`.
