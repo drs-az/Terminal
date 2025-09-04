@@ -358,7 +358,7 @@ let currentPicUrl = '';
 function showAttachmentError(msg){
   const err = document.createElement('div');
   err.className = 'error';
-  err.textContent = sanitizeHTML(msg);
+  err.textContent = msg;
   noteAttachmentsPreview.appendChild(err);
   setTimeout(()=>err.remove(),2000);
 }
@@ -423,7 +423,7 @@ noteModal.addEventListener('paste', e=>{
 function println(text, cls){
   const div = document.createElement('div');
   div.className = 'line' + (cls ? ' ' + cls : '');
-  div.textContent = sanitizeHTML(text);
+  div.textContent = text;
   output.appendChild(div);
   output.scrollTop = output.scrollHeight;
 }
@@ -441,7 +441,7 @@ function printTask(t, indexShown){
   const line = `${idx}(${t.id}) ${box} ${t.text}${tags}${due}${pri}${noteBadge}`;
   const div = document.createElement('div');
   div.className = 'line' + (t.done ? ' task-done' : '');
-  div.textContent = sanitizeHTML(line);
+  div.textContent = line;
   output.appendChild(div);
 }
 function printList(arr, title){
@@ -457,7 +457,7 @@ function printNote(n, indexShown){
   const line = `${idx}(${n.id}) 📝 ${n.title || ''} — ${n.description || ''}${tags}${taskLink}`;
   const div = document.createElement('div');
   div.className = 'line';
-  div.textContent = sanitizeHTML(line);
+  div.textContent = line;
   output.appendChild(div);
   if (n.attachments && n.attachments.length){
     const adiv = document.createElement('div');
@@ -473,7 +473,7 @@ function printNote(n, indexShown){
       } else {
         const a = document.createElement('a');
         a.href = att;
-        a.textContent = sanitizeHTML(att);
+        a.textContent = att;
         a.target = '_blank';
         a.style.marginRight = '6px';
         adiv.appendChild(a);
@@ -494,7 +494,7 @@ function printMessage(m, indexShown){
   const line = `${idx}(${m.id}) ${m.from} -> ${m.to} : ${m.subject || ''} [${m.date} ${m.time}]`;
   const div = document.createElement('div');
   div.className = 'line';
-  div.textContent = sanitizeHTML(line);
+  div.textContent = line;
   output.appendChild(div);
 }
 function printMessages(arr, title){
@@ -509,7 +509,7 @@ function printPassword(p, indexShown){
   const line = `${idx}(${p.id}) 🔐 ${p.title || ''} — ${p.username || ''}`;
   const div = document.createElement('div');
   div.className = 'line';
-  div.textContent = sanitizeHTML(line);
+  div.textContent = line;
   output.appendChild(div);
 }
 
@@ -992,7 +992,7 @@ cmd.readnote = (args)=>{
       } else {
         const a = document.createElement('a');
         a.href = att;
-        a.textContent = sanitizeHTML(att);
+        a.textContent = att;
         a.target = '_blank';
         a.style.marginRight = '6px';
         adiv.appendChild(a);
@@ -1506,7 +1506,7 @@ command.addEventListener('keydown', (e)=>{
     } else {
       if (historyIndex < history.length) historyIndex++;
     }
-    command.value = sanitizeHTML(history[historyIndex] || '');
+    command.value = history[historyIndex] || '';
     e.preventDefault();
     return;
   }
@@ -1533,15 +1533,15 @@ btnOK.addEventListener('click', ()=>{
 
 function showNoteModal(note){
   editingNote = note || null;
-  noteModalTitle.textContent = sanitizeHTML(note ? 'Edit Note' : 'Add Note');
-  noteTitleInput.value = note ? sanitizeHTML(note.title || '') : '';
-  noteDescriptionInput.value = note ? sanitizeHTML(note.description || '') : '';
-  noteLinksInput.value = note ? sanitizeHTML((note.links || []).join(', ')) : '';
-  noteAttachmentsInput.value = note ? sanitizeHTML((note.attachments || []).filter(a=>!a.startsWith('idb:')).join(', ')) : '';
+  noteModalTitle.textContent = note ? 'Edit Note' : 'Add Note';
+  noteTitleInput.value = note ? (note.title || '') : '';
+  noteDescriptionInput.value = note ? (note.description || '') : '';
+  noteLinksInput.value = note ? ((note.links || []).join(', ')) : '';
+  noteAttachmentsInput.value = note ? ((note.attachments || []).filter(a=>!a.startsWith('idb:')).join(', ')) : '';
   noteAttachmentsPreview.innerHTML = '';
   noteAttachmentsFiles.value = '';
   pendingAttachmentFiles = [];
-  noteBodyInput.value = note ? sanitizeHTML(note.body || '') : '';
+  noteBodyInput.value = note ? (note.body || '') : '';
   noteModal.style.display = 'flex';
   noteTitleInput.focus();
 }
@@ -1554,14 +1554,14 @@ function hideNoteModal(){
 }
 function showMessageModal(prefill){
   replyingMessage = prefill || null;
-  msgModalTitle.textContent = sanitizeHTML(prefill ? 'Reply Message' : 'Send Message');
-  msgFromInput.value = prefill ? sanitizeHTML(prefill.to || '') : '';
-  msgToInput.value = prefill ? sanitizeHTML(prefill.from || '') : '';
-  msgSubjectInput.value = prefill ? sanitizeHTML(prefill.subject || '') : '';
+  msgModalTitle.textContent = prefill ? 'Reply Message' : 'Send Message';
+  msgFromInput.value = prefill ? (prefill.to || '') : '';
+  msgToInput.value = prefill ? (prefill.from || '') : '';
+  msgSubjectInput.value = prefill ? (prefill.subject || '') : '';
   const now = new Date();
-  msgDateInput.value = sanitizeHTML(now.toISOString().slice(0,10));
-  msgTimeInput.value = sanitizeHTML(now.toTimeString().slice(0,5));
-  msgBodyInput.value = prefill ? sanitizeHTML(prefill.message || '') : '';
+  msgDateInput.value = now.toISOString().slice(0,10);
+  msgTimeInput.value = now.toTimeString().slice(0,5);
+  msgBodyInput.value = prefill ? (prefill.message || '') : '';
   msgPassInput.value = '';
   msgModal.style.display = 'flex';
   msgFromInput.focus();
@@ -1602,12 +1602,12 @@ msgShare.addEventListener('click', async ()=>{
 });
 function showPassModal(pass){
   editingPass = pass || null;
-  passModalTitle.textContent = sanitizeHTML(pass ? 'Edit Password' : 'Add Password');
-  passTitleInput.value = pass ? sanitizeHTML(pass.title || '') : '';
-  passUsernameInput.value = pass ? sanitizeHTML(pass.username || '') : '';
-  passPasswordInput.value = pass ? sanitizeHTML(pass.password || '') : '';
-  passWebsiteInput.value = pass ? sanitizeHTML(pass.website || '') : '';
-  passNotesInput.value = pass ? sanitizeHTML(pass.notes || '') : '';
+  passModalTitle.textContent = pass ? 'Edit Password' : 'Add Password';
+  passTitleInput.value = pass ? (pass.title || '') : '';
+  passUsernameInput.value = pass ? (pass.username || '') : '';
+  passPasswordInput.value = pass ? (pass.password || '') : '';
+  passWebsiteInput.value = pass ? (pass.website || '') : '';
+  passNotesInput.value = pass ? (pass.notes || '') : '';
   passModal.style.display = 'flex';
   passTitleInput.focus();
 }
@@ -1703,7 +1703,7 @@ const installHelp = document.getElementById('install-help');
 const installClose = document.getElementById('install-close');
 let deferredPrompt = null;
 
-function setStatus(s){ if (installStatus) installStatus.textContent = sanitizeHTML(s); }
+function setStatus(s){ if (installStatus) installStatus.textContent = s; }
 
 // Register SW and wait until it's controlling the page
 if ('serviceWorker' in navigator) {
