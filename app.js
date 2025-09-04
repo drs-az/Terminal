@@ -722,7 +722,7 @@ cmd.help = () => {
   println('  - gdriveconfig <client_id> <api_key> — store Google Drive credentials for backup');
   println('  - themepreset <json> — apply a theme preset from JSON');
   println('  - themeexport [name] — download current theme preset');
-  println('  - collab <session> — join a collaboration channel and broadcast tasks/notes');
+  println('  - collab <session> <secret> — join a collaboration channel and broadcast tasks/notes');
 };
 
 let lastTaskListCache = null;
@@ -1350,9 +1350,10 @@ cmd.backup = async (args)=>{
 let collabSession = null;
 cmd.collab = async (args)=>{
   const session = args[0];
-  if (!session) return println('usage: COLLAB <session>', 'error');
+  const secret = args[1];
+  if (!session || !secret) return println('usage: COLLAB <session> <secret>', 'error');
   const { startCollaboration } = await loadCollaboration();
-  collabSession = startCollaboration(session);
+  collabSession = startCollaboration(session, secret);
   if (collabSession && collabSession.broadcast) collabSession.broadcast();
   println('collaboration started.', 'ok');
 };
@@ -1886,3 +1887,5 @@ if (!locked) startInactivityTimer();
 
 // Focus on output tap
 output.addEventListener('pointerdown', ()=>command.focus());
+
+export { cmd };
