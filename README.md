@@ -20,6 +20,7 @@ It requires a passcode before storing any data and encrypts everything with AES-
 - 🎭 **Theme Presets**: Apply or export theme JSON files for easy sharing.
 - 🤝 **Collaboration Channel**: Share encrypted task and note data with other tabs via BroadcastChannel using a shared secret.
 - ✉️ **Messages**: Compose, share, and receive encrypted messages.
+- 🔑 **Password Sets**: Store and manage passwords, secured by your passcode.
 - 📎 **Encrypted Sharing**: Share individual tasks, notes, or messages with a passcode-protected payload.
 
 ## Project Structure
@@ -106,7 +107,7 @@ curl -I https://your-domain/config.json
 
 ## Commands
 
-Type commands into the input bar or directly in the terminal view.
+Type commands into the input bar or directly in the terminal view. Use `help` to list all available commands.
 
 ### Tasks
 - `add <text>` — add a new item
