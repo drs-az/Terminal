@@ -7,137 +7,10 @@
   <!-- PWA refs -->
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#32cd32">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; script-src 'self' https://apis.google.com 'unsafe-inline'; style-src 'self' 'unsafe-inline';"/>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; script-src 'self' https://apis.google.com; style-src 'self';"/>
   <script src="dompurify.js"></script>
   <script src="sanitize.js"></script>
-  <style>
-    :root{
-      --bg: #000;
-      --fg: #32cd32; /* limegreen */
-      --border: #32cd32;
-      --font: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-      --header-h: 60px;
-      --input-h: 52px;
-    }
-    html, body {
-      height: 100%;
-      margin: 0;
-      background: var(--bg);
-      color: var(--fg);
-      font-family: var(--font);
-      overflow: hidden;
-    }
-    #header{
-      position: fixed; top: 0; left: 0; right: 0;
-      height: var(--header-h);
-      padding: 6px 10px;
-      border-bottom: 1px solid var(--border);
-      background: var(--bg);
-      z-index: 1000;
-      line-height: 1.2;
-      user-select: none;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-    }
-    #header .left{ display: flex; flex-direction: column; }
-    #installWrap{ display: flex; align-items: center; gap: 8px; }
-    #installStatus{ font-size: 12px; opacity: .75; }
-    #installBtn{
-      background: transparent;
-      color: var(--fg);
-      border: 1px solid var(--border);
-      padding: 6px 10px;
-      font-family: var(--font);
-      cursor: pointer;
-      opacity: .6;
-    }
-    #installBtn.enabled{ opacity: 1; }
-    #output{
-      position: absolute;
-      top: var(--header-h);
-      left: 0; right: 0;
-      bottom: calc(var(--input-h) + env(safe-area-inset-bottom));
-      padding: 20px 10px 10px;
-      overflow-y: auto;
-      -webkit-overflow-scrolling: touch;
-      box-sizing: border-box;
-    }
-    #input-bar{
-      position: fixed; left: 0; right: 0;
-      height: var(--input-h);
-      bottom: env(safe-area-inset-bottom);
-      border-top: 1px solid var(--border);
-      background: var(--bg);
-      z-index: 1000;
-      display: flex; align-items: center; gap: 8px;
-      padding: 6px 10px; box-sizing: border-box;
-      transform: translateY(0);
-      will-change: transform;
-    }
-    #prompt-label{ user-select: none; white-space: pre; }
-    #command{
-      flex: 1; min-width: 0;
-      background: transparent; color: var(--fg);
-      border: 0; outline: none; caret-color: var(--fg);
-      font-family: var(--font); font-size: 16px;
-    }
-    .line{ white-space: pre-wrap; word-break: break-word; }
-    .muted{ opacity: 0.85; }
-    .error{ color: #ff4d4d; }
-    .ok{ color: #7fffd4; }
-    .task-done{ opacity: 0.7; text-decoration: line-through; }
-    /* Modal + Install Help */
-    #modal, #install-help, #note-modal, #pic-modal, #msg-modal{
-      position: fixed; inset: 0; display: none;
-      align-items: center; justify-content: center;
-      background: rgba(0,0,0,0.92);
-      z-index: 2000;
-    }
-    .card{
-      border: 1px solid var(--border);
-      padding: 16px 20px;
-      width: min(560px, calc(100% - 40px));
-      background: #000;
-      box-sizing: border-box;
-    }
-    .row{ display:flex; gap:10px; margin-top:14px; justify-content:flex-end; }
-    button.terminal{
-      background: transparent; color: var(--fg);
-      border: 1px solid var(--border);
-      padding: 8px 14px; font-family: var(--font);
-      cursor: pointer;
-    }
-    button.terminal:hover{ outline: 1px dashed var(--border); }
-    #note-modal label, #msg-modal label{ display:block; margin-top:6px; }
-    #note-modal input, #note-modal textarea, #msg-modal input, #msg-modal textarea{
-      width:100%;
-      background: transparent; color: var(--fg);
-      border:1px solid var(--border);
-      font-family: var(--font);
-      padding:6px; box-sizing:border-box;
-    }
-    #note-attachments-preview .thumb{ display:inline-block; position:relative; margin-right:6px; }
-    #note-attachments-preview img{ max-width:64px; max-height:64px; border:1px solid var(--border); }
-    #note-attachments-preview .remove{ position:absolute; top:0; right:0; background:var(--bg); color:var(--fg); border:0; cursor:pointer; }
-    #note-attachments-preview.dragover{ outline:2px dashed var(--fg); }
-  .cursor {
-    display: inline-block;
-    width: 10px;
-    height: 1.2em;
-    background-color: #32cd32; /* terminal green */
-    margin-left: 2px;
-    animation: blink 1s steps(1) infinite;
-    vertical-align: bottom;
-  }
-
-  @keyframes blink {
-    50% {
-      opacity: 0;
-    }
-  }
-  </style>
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <div id="header">
@@ -163,7 +36,7 @@
   <div id="modal" role="dialog" aria-modal="true" aria-labelledby="wipe-title">
     <div class="card">
       <div id="wipe-title" class="line">Confirm WIPE</div>
-      <div class="line" style="margin-top:6px">Are you sure you want to WIPE all data?</div>
+      <div class="line mt-6">Are you sure you want to WIPE all data?</div>
       <div class="row">
         <button class="terminal" id="btn-cancel">Cancel</button>
         <button class="terminal" id="btn-confirm">WIPE</button>
@@ -220,8 +93,8 @@
   <div id="pic-modal" role="dialog" aria-modal="true" aria-labelledby="pic-modal-title">
     <div class="card">
       <div id="pic-modal-title" class="line">Image Preview</div>
-      <div class="line" style="text-align:center; margin-top:6px">
-        <img id="pic-modal-img" alt="note image" style="max-width:100%; height:auto;" />
+      <div class="line text-center mt-6">
+        <img id="pic-modal-img" alt="note image" />
       </div>
       <div class="row">
         <button class="terminal" id="pic-close">Close</button>
@@ -232,13 +105,13 @@
   <div id="install-help" role="dialog" aria-modal="true" aria-labelledby="install-title">
     <div class="card">
       <div id="install-title" class="line">Install Help</div>
-      <div class="line" style="margin-top:6px">
+      <div class="line mt-6">
         The browser didn’t expose the install prompt yet.
       </div>
-      <div class="line" style="margin-top:6px">
+      <div class="line mt-6">
           Ensure: <code>manifest.webmanifest</code> (with 192/512 icons) is reachable, a <code>sw.js</code> is registered and controlling this page, and you’re on HTTPS or localhost.
       </div>
-      <div class="line" style="margin-top:6px">
+      <div class="line mt-6">
         iOS Safari: use Share → “Add to Home Screen” (no programmatic prompt on iOS).
       </div>
       <div class="row">
