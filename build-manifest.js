@@ -3,15 +3,19 @@ const path = require('path');
 const crypto = require('crypto');
 
 // Files to include in the asset manifest
-const files = [
-  'index.html',
-  'manifest.webmanifest',
-  'sw.js',
-  'features.js',
-  'icons/icon-192.png',
-  'icons/icon-512.png',
-  'config.json'
-];
+  const files = [
+    'index.html',
+    'manifest.webmanifest',
+    'sw.js',
+    'features.js',
+    'app.js',
+    'encryption.js',
+    'scrypt.js',
+    'collaboration.js',
+    'icons/icon-192.png',
+    'icons/icon-512.png',
+    'config.json'
+  ];
 
 const root = __dirname;
 
