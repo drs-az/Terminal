@@ -16,8 +16,9 @@ export async function scrypt(password, salt, { N, r, p, dkLen }) {
     return new Uint8Array(bits);
   };
   let B = await PBKDF2(password, salt, p * blockSize);
-  const V = new Uint32Array(N * (32 * r));
   const XY = new Uint32Array(64 * r);
+  const X = XY.subarray(0, 32 * r);
+  const V = new Uint32Array(N * X.length);
   const blockMix = (B32) => {
     let X = B32.slice((2 * r - 1) * 16, 2 * r * 16);
     const Y = new Uint32Array(32 * r);
@@ -32,17 +33,17 @@ export async function scrypt(password, salt, { N, r, p, dkLen }) {
     }
   };
   const ROMix = (Bslice) => {
-    XY.set(Bslice);
+    X.set(Bslice);
     for (let i = 0; i < N; i++) {
-      V.set(XY, i * XY.length);
+      V.set(X, i * X.length);
       blockMix(XY);
     }
     for (let i = 0; i < N; i++) {
       const j = XY[(2 * r - 1) * 16] & (N - 1);
-      for (let k = 0; k < XY.length; k++) XY[k] ^= V[j * XY.length + k];
+      for (let k = 0; k < X.length; k++) XY[k] ^= V[j * X.length + k];
       blockMix(XY);
     }
-    Bslice.set(XY);
+    Bslice.set(X);
   };
   for (let i = 0; i < p; i++) {
     const Bi = B.subarray(i * blockSize, (i + 1) * blockSize);
