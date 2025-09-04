@@ -7,10 +7,12 @@
 let getItems = () => [];
 let getNotes = () => [];
 let getMessages = () => [];
-function registerDataGetters({ items, notes, messages }) {
+let getPasswords = () => [];
+function registerDataGetters({ items, notes, messages, passwords }) {
   if (items) getItems = items;
   if (notes) getNotes = notes;
   if (messages) getMessages = messages;
+  if (passwords) getPasswords = passwords;
 }
 
 // --- Recurring & Snoozeable Reminders ------------------------------------
@@ -264,7 +266,7 @@ function syncWithCloud(provider = 'local', mode = 'upload') {
 
   const key = `terminal-list-sync-${provider}`;
   if (mode === 'upload') {
-    const data = JSON.stringify({ items: getItems(), notes: getNotes(), messages: getMessages() });
+    const data = JSON.stringify({ items: getItems(), notes: getNotes(), messages: getMessages(), passwords: getPasswords() });
     localStorage.setItem(key, data);
     return Promise.resolve('uploaded');
   } else {
@@ -274,6 +276,7 @@ function syncWithCloud(provider = 'local', mode = 'upload') {
     if (typeof saveItems === 'function') saveItems(data.items || []);
     if (typeof saveNotes === 'function') saveNotes(data.notes || []);
     if (typeof saveMessages === 'function') saveMessages(data.messages || []);
+    if (typeof savePasswords === 'function') savePasswords(data.passwords || []);
     if (typeof rescheduleAllNotifications === 'function') rescheduleAllNotifications();
     return Promise.resolve('downloaded');
   }
@@ -322,6 +325,7 @@ export {
   registerDataGetters,
   getItems,
   getNotes,
-  getMessages
+  getMessages,
+  getPasswords
 };
 
