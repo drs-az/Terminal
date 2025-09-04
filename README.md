@@ -16,7 +16,7 @@ It requires a passcode before storing any data and encrypts everything with AES-
 - 🔁 **Recurring & Snoozeable Reminders**: Automatically reschedule tasks or snooze them to a later date.
 - 🔎 **Advanced Queries**: Filter tasks by tag, due date (including overdue), completion state, or priority.
 - ✨ **Rich Note Editing**: Add attachments, links, or formatted text to notes.
-- ☁️ **Cloud Backup**: Upload or download data to a localStorage sandbox or Google Drive.
+- ☁️ **Cloud Backup**: Encrypted sync to a localStorage sandbox or Google Drive using your passcode.
 - 🎭 **Theme Presets**: Apply or export theme JSON files for easy sharing.
 - 🤝 **Collaboration Channel**: Share encrypted task and note data with other tabs via BroadcastChannel using a shared secret.
 - ✉️ **Messages**: Compose, share, and receive encrypted messages.
@@ -150,7 +150,7 @@ Type commands into the input bar or directly in the terminal view.
 - `snooze <id|#> <YYYY-MM-DD>` — snooze a task to a new date
 - `aquery <query>` — run an advanced task query (tag/due/done/pri filters; `due:overdue` for past-due tasks)
 - `nrich <id|#> <title>|[body]|[link]|[attachments]` — edit note with rich fields; attachments are a comma-separated list of URLs or data URIs
-- `backup [provider] [upload|download]` — sync data to a sandbox provider (`local` or `gdrive`)
+- `backup [provider] [upload|download]` — passcode-encrypted sync to a sandbox provider (`local` or `gdrive`)
 - `gdriveconfig <client_id> <api_key>` — store Google Drive credentials for backup
 - `themepreset <json>` — apply a theme preset from JSON
 - `themeexport [name]` — download current theme preset
@@ -185,10 +185,11 @@ editNoteRich(noteId, {
 ```
 
 ### Cloud Backup
+Backups are encrypted with your passcode.
 ```js
 import { syncWithCloud } from './features.js';
-await syncWithCloud('local', 'upload');   // save to localStorage sandbox
-await syncWithCloud('local', 'download'); // restore from sandbox
+await syncWithCloud('local', 'upload', passcode);   // save encrypted backup to localStorage sandbox
+await syncWithCloud('local', 'download', passcode); // restore from sandbox
 ```
 
 ### Google Drive Backup
@@ -200,8 +201,8 @@ GDRIVECONFIG <client_id> <api_key>
 Then:
 ```js
 import { syncWithCloud } from './features.js';
-await syncWithCloud('gdrive', 'upload');
-await syncWithCloud('gdrive', 'download');
+await syncWithCloud('gdrive', 'upload', passcode);
+await syncWithCloud('gdrive', 'download', passcode);
 ```
 
 ### Theme Presets
