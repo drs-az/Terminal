@@ -97,8 +97,8 @@
       cursor: pointer;
     }
     button.terminal:hover{ outline: 1px dashed var(--border); }
-    #note-modal label, #msg-modal label{ display:block; margin-top:6px; }
-    #note-modal input, #note-modal textarea, #msg-modal input, #msg-modal textarea{
+    #note-modal label, #msg-modal label, #pass-modal label{ display:block; margin-top:6px; }
+    #note-modal input, #note-modal textarea, #msg-modal input, #msg-modal textarea, #pass-modal input, #pass-modal textarea{
       width:100%;
       background: transparent; color: var(--fg);
       border:1px solid var(--border);
