@@ -29,7 +29,6 @@ fetch('./config.json')
  ************/
 const STORE_KEY_V2 = 'terminal-list-state-v2'; // {items:[], notes:[], messages:[]} or {version,enc:{}}
 const STORE_KEY_V1 = 'terminal-list-items-v1'; // legacy items-only
-const PASS_DECLINED_KEY = 'terminal-pass-declined-v1';
 
 const enc = new TextEncoder();
 const dec = new TextDecoder();
@@ -39,8 +38,6 @@ function b64ToBuf(str){ return Uint8Array.from(atob(str), c=>c.charCodeAt(0)); }
 let passKey = null; // CryptoKey when unlocked
 let passSalt = null; // base64 string
 let locked = false;
-let passDeclined = localStorage.getItem(PASS_DECLINED_KEY) === '1';
-let savingBlocked = !passDeclined;
 
 let dicewareWords = null;
 async function loadDicewareWords() {
@@ -73,24 +70,19 @@ function loadState(){
     if (raw1){
       const items = JSON.parse(raw1) || [];
       const state = { items, notes: [], messages: [] };
-      saveState(state);
       return state;
     }
   }catch{}
   return { items: [], notes: [], messages: [] };
 }
 async function saveState(state){
-  if (savingBlocked) return;
+  if (!passKey) throw new Error('Passcode not set');
   try{
-    if (passKey){
-      const iv = crypto.getRandomValues(new Uint8Array(12));
-      const data = enc.encode(JSON.stringify({ items: state.items, notes: state.notes, messages: state.messages }));
-      const buf = await crypto.subtle.encrypt({ name:'AES-GCM', iv }, passKey, data);
-      const payload = { version: 4, enc: { v:1, salt: passSalt, iv: b64(iv), data: b64(buf) } };
-      localStorage.setItem(STORE_KEY_V2, JSON.stringify(payload));
-    } else {
-      localStorage.setItem(STORE_KEY_V2, JSON.stringify({ items: state.items, notes: state.notes, messages: state.messages }));
-    }
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const data = enc.encode(JSON.stringify({ items: state.items, notes: state.notes, messages: state.messages }));
+    const buf = await crypto.subtle.encrypt({ name:'AES-GCM', iv }, passKey, data);
+    const payload = { version: 4, enc: { v:1, salt: passSalt, iv: b64(iv), data: b64(buf) } };
+    localStorage.setItem(STORE_KEY_V2, JSON.stringify(payload));
   }catch(err){ console.error(err); }
 }
 function makeId(){ return Math.random().toString(36).slice(2,8); }
@@ -117,7 +109,6 @@ let notes = state.notes.map(n=>{
 state.notes = notes;
 // expose notes array for feature helpers
 window.notes = notes;
-savingBlocked = !passSalt && !passDeclined;
 if (needsNoteMigration) saveNotes(notes);
 let messages = state.messages || [];
 state.messages = messages;
@@ -177,18 +168,18 @@ if (navigator.serviceWorker) {
   });
 }
 
-function saveItems(v){ state.items = v; indexItems(v); saveState(state); }
+function saveItems(v){ state.items = v; indexItems(v); saveState(state).catch(()=>{}); }
 function saveNotes(v){
   notes = v;
   window.notes = v;
   state.notes = v;
-  saveState(state);
+  saveState(state).catch(()=>{});
 }
 function saveMessages(v){
   messages = v;
   window.messages = v;
   state.messages = v;
-  saveState(state);
+  saveState(state).catch(()=>{});
 }
 const IMAGE_DB = 'terminal-list-images';
 let imageDbPromise = null;
@@ -579,8 +570,7 @@ cmd.help = () => {
   println('  - importshare — paste shared item JSON and decrypt with a passcode');
   println('  - wipe — clear all data (with confirm)');
   println('  - genpass — generate a Diceware passphrase');
-  println('  - setpass — set or clear passcode');
-  println('  - nopass — allow saving without a passcode');
+  println('  - setpass — set passcode');
   println('  - lock — clear decrypted data from memory');
   println('  - unlock — restore data with passcode');
   println('');
@@ -1276,35 +1266,18 @@ cmd.genpass = async (args = []) => {
 
 cmd.setpass = async ()=>{
   if (locked){ println('unlock first', 'error'); return; }
-  println('Enter new passcode (blank to disable):', 'muted');
+  println('Enter new passcode:', 'muted');
   const pass = await getNextLine(true);
   if (!pass){
-    passKey = null; passSalt = null;
-    localStorage.setItem(PASS_DECLINED_KEY, '1');
-    passDeclined = true;
-    savingBlocked = false;
-    await saveState(state);
-    println('passcode cleared.', 'ok');
+    println('passcode required.', 'error');
     return;
   }
   const saltBytes = crypto.getRandomValues(new Uint8Array(16));
   passSalt = b64(saltBytes);
   const { deriveKey } = await loadEncryption();
   passKey = await deriveKey(pass, saltBytes);
-  localStorage.removeItem(PASS_DECLINED_KEY);
-  passDeclined = false;
-  savingBlocked = false;
   await saveState(state);
   println('passcode set.', 'ok');
-};
-
-cmd.nopass = ()=>{
-  if (passSalt){ println('passcode already set','muted'); return; }
-  localStorage.setItem(PASS_DECLINED_KEY, '1');
-  passDeclined = true;
-  savingBlocked = false;
-  saveState(state);
-  println('saving without passcode.', 'ok');
 };
 
 cmd.lock = ()=>{
@@ -1635,7 +1608,7 @@ if (!localStorage.getItem('terminal-list-initialized-v4')){
   println('Type HELP for tasks, notes, and messages commands.');
   localStorage.setItem('terminal-list-initialized-v4','1');
 }
-if (!passSalt && !passDeclined) println('No passcode set. Use SETPASS to protect stored data or NOPASS to save unencrypted. Saving disabled until a choice is made.', 'error');
+if (!passSalt) println('No passcode set. Use SETPASS to protect stored data. Saving disabled until a passcode is set.', 'error');
 if (locked) println('Data is locked. Type UNLOCK to access.', 'muted');
 
 // Focus on output tap
