@@ -3,6 +3,7 @@ importScripts('./asset-manifest.js');
 
 const CACHE_NAME = `terminal-list-${self.__ASSET_MANIFEST.version}`;
 const ASSETS = self.__ASSET_MANIFEST.files;
+const NO_STORE_PATHS = ['/config.json'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -27,6 +28,22 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
+
+  const url = new URL(req.url);
+  if (NO_STORE_PATHS.includes(url.pathname)) {
+    event.respondWith(
+      fetch(req).then((netRes) => {
+        const headers = new Headers(netRes.headers);
+        headers.set('Cache-Control', 'no-store');
+        return new Response(netRes.body, {
+          status: netRes.status,
+          statusText: netRes.statusText,
+          headers,
+        });
+      })
+    );
+    return;
+  }
 
   event.respondWith(
     (async () => {
