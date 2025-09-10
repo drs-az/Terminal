@@ -6,6 +6,6 @@
   "scripts": {
     "build": "node build-manifest.js",
     "prepublishOnly": "npm audit",
-    "test": "node test/cache-header.test.js && node test/strip-metadata.test.js"
+    "test": "node test/cache-header.test.js && node test/strip-metadata.test.js && node test/inactivity.test.js"
   }
 }

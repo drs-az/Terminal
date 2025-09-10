@@ -318,13 +318,19 @@ function resetInactivityTimer(){
   }, INACTIVITY_MS);
 }
 function startInactivityTimer(){
-  command.addEventListener('keydown', resetInactivityTimer);
-  command.addEventListener('pointerdown', resetInactivityTimer);
+  [command, modal].forEach(el => {
+    if (!el) return;
+    el.addEventListener('keydown', resetInactivityTimer);
+    el.addEventListener('pointerdown', resetInactivityTimer);
+  });
   resetInactivityTimer();
 }
 function stopInactivityTimer(){
-  command.removeEventListener('keydown', resetInactivityTimer);
-  command.removeEventListener('pointerdown', resetInactivityTimer);
+  [command, modal].forEach(el => {
+    if (!el) return;
+    el.removeEventListener('keydown', resetInactivityTimer);
+    el.removeEventListener('pointerdown', resetInactivityTimer);
+  });
   clearTimeout(inactivityTimer);
 }
 const modal = document.getElementById('modal');
