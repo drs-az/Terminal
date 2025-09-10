@@ -718,6 +718,7 @@ cmd.help = () => {
   println('Other:');
   println('  - syntax <command> — show detailed usage for a command');
   println('  - theme <bg> <fg> <border> — set terminal colors');
+  println('  - update — refresh cached files from the service worker');
   println('');
   println('Experimental Feature Commands:');
   println('  - recur <id|#> <n> <unit> — schedule recurring reminder (unit = minute|hour|day|week)');
@@ -1326,6 +1327,17 @@ cmd.themeexport = (args)=>{
   const name = args[0] || 'theme';
   exportThemePreset(name);
   println('theme exported.', 'ok');
+};
+
+cmd.update = async () => {
+  println('refreshing cache...', 'muted');
+  const keys = await caches.keys();
+  await Promise.all(keys.filter(k => k.startsWith('terminal-list-')).map(k => caches.delete(k)));
+  if (swRegistration && swRegistration.active) {
+    swRegistration.active.postMessage({ type: 'PRECACHE' });
+    try { await swRegistration.update(); } catch (e) {}
+  }
+  println('cache refreshed. reload page to use updated assets.', 'ok');
 };
 
 cmd.gdriveconfig = (args)=>{

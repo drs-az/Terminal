@@ -26,6 +26,14 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'PRECACHE') {
+    event.waitUntil(
+      caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
+    );
+  }
+});
+
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
