@@ -266,6 +266,7 @@ await collab.broadcast(); // sync current tasks/notes to other tabs with same se
  - Passcode derivation uses scrypt with configurable parameters (stored with
    your data so the cost can be increased in future versions).
 - Remember your passcode! Without it, encrypted data cannot be recovered.
+- Sessions auto-lock after five minutes of inactivity. Any interaction with the terminal or its modals resets this timer, and typing in modal forms counts as activity that keeps the session active.
 - Google Drive credentials configured via `GDRIVECONFIG` live only in memory; never commit API keys or share them publicly.
 - When updating the Google API script, recompute its Subresource Integrity hash using:
   `curl -s https://apis.google.com/js/api.js | openssl dgst -sha384 -binary | openssl base64 -A`
