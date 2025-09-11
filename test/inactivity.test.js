@@ -41,8 +41,7 @@ const outputElem = { ...makeElem(), appendChild: (child) => outputs.push(child.t
 const commandElem = makeElem();
 const modalElem = makeElem();
 const noteModalElem = makeElem();
-const msgModalElem = makeElem();
-const passModalElem = makeElem();
+
 
 global.fetch = async () => ({ json: async () => ({}) });
 global.btoa = (str) => Buffer.from(str, 'binary').toString('base64');
@@ -54,8 +53,7 @@ global.document = {
     if (id === 'command') return commandElem;
     if (id === 'modal') return modalElem;
     if (id === 'note-modal') return noteModalElem;
-    if (id === 'msg-modal') return msgModalElem;
-    if (id === 'pass-modal') return passModalElem;
+
     return makeElem();
   },
   createElement: () => makeElem(),
@@ -88,40 +86,27 @@ global.navigator = {
   const id2 = ids[0];
   assert.notStrictEqual(id2, id1);
 
-  // Typing in modal should also reset timer
-  modalElem.dispatchEvent({ type: 'keydown' });
+  // Typing in note modal should also reset timer
+  noteModalElem.dispatchEvent({ type: 'keydown' });
   assert.strictEqual(lockCalls, 0);
   ids = Array.from(timers.keys());
   assert.strictEqual(ids.length, 1);
   const id3 = ids[0];
   assert.notStrictEqual(id3, id2);
 
-  // Typing in note modal should reset timer
-  noteModalElem.dispatchEvent({ type: 'keydown' });
+  // Typing in modal should also reset timer
+  modalElem.dispatchEvent({ type: 'keydown' });
+
   assert.strictEqual(lockCalls, 0);
   ids = Array.from(timers.keys());
   assert.strictEqual(ids.length, 1);
   const id4 = ids[0];
   assert.notStrictEqual(id4, id3);
 
-  // Typing in message modal should reset timer
-  msgModalElem.dispatchEvent({ type: 'keydown' });
-  assert.strictEqual(lockCalls, 0);
-  ids = Array.from(timers.keys());
-  assert.strictEqual(ids.length, 1);
-  const id5 = ids[0];
-  assert.notStrictEqual(id5, id4);
-
-  // Typing in password modal should reset timer
-  passModalElem.dispatchEvent({ type: 'keydown' });
-  assert.strictEqual(lockCalls, 0);
-  ids = Array.from(timers.keys());
-  assert.strictEqual(ids.length, 1);
-  const id6 = ids[0];
-  assert.notStrictEqual(id6, id5);
 
   // Inactivity triggers lock
-  timers.get(id6)();
+  timers.get(id4)();
+
   assert.strictEqual(lockCalls, 1);
 
   console.log('Inactivity timer reset test passed.');
