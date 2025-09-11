@@ -319,6 +319,7 @@ function resetInactivityTimer(){
 }
 function startInactivityTimer(){
   [command, modal, noteModal].forEach(el => {
+
     if (!el) return;
     el.addEventListener('keydown', resetInactivityTimer);
     el.addEventListener('pointerdown', resetInactivityTimer);
@@ -326,7 +327,9 @@ function startInactivityTimer(){
   resetInactivityTimer();
 }
 function stopInactivityTimer(){
+
   [command, modal, noteModal].forEach(el => {
+
     if (!el) return;
     el.removeEventListener('keydown', resetInactivityTimer);
     el.removeEventListener('pointerdown', resetInactivityTimer);

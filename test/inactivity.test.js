@@ -42,6 +42,7 @@ const commandElem = makeElem();
 const modalElem = makeElem();
 const noteModalElem = makeElem();
 
+
 global.fetch = async () => ({ json: async () => ({}) });
 global.btoa = (str) => Buffer.from(str, 'binary').toString('base64');
 global.atob = (str) => Buffer.from(str, 'base64').toString('binary');
@@ -52,6 +53,7 @@ global.document = {
     if (id === 'command') return commandElem;
     if (id === 'modal') return modalElem;
     if (id === 'note-modal') return noteModalElem;
+
     return makeElem();
   },
   createElement: () => makeElem(),
@@ -94,14 +96,17 @@ global.navigator = {
 
   // Typing in modal should also reset timer
   modalElem.dispatchEvent({ type: 'keydown' });
+
   assert.strictEqual(lockCalls, 0);
   ids = Array.from(timers.keys());
   assert.strictEqual(ids.length, 1);
   const id4 = ids[0];
   assert.notStrictEqual(id4, id3);
 
+
   // Inactivity triggers lock
   timers.get(id4)();
+
   assert.strictEqual(lockCalls, 1);
 
   console.log('Inactivity timer reset test passed.');
