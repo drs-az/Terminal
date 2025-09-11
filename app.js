@@ -318,7 +318,8 @@ function resetInactivityTimer(){
   }, INACTIVITY_MS);
 }
 function startInactivityTimer(){
-  [command, modal, noteModal].forEach(el => {
+
+  interactiveElements.forEach(el => {
 
     if (!el) return;
     el.addEventListener('keydown', resetInactivityTimer);
@@ -328,7 +329,7 @@ function startInactivityTimer(){
 }
 function stopInactivityTimer(){
 
-  [command, modal, noteModal].forEach(el => {
+  interactiveElements.forEach(el => {
 
     if (!el) return;
     el.removeEventListener('keydown', resetInactivityTimer);
@@ -1818,6 +1819,7 @@ const installBtn = document.getElementById('installBtn');
 const installStatus = document.getElementById('installStatus');
 const installHelp = document.getElementById('install-help');
 const installClose = document.getElementById('install-close');
+const interactiveElements = [command, modal, noteModal, msgModal, passModal, picModal, installHelp];
 let deferredPrompt = null;
 
 function setStatus(s){ if (installStatus) installStatus.textContent = s; }
