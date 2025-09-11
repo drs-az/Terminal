@@ -40,6 +40,8 @@ const outputs = [];
 const outputElem = { ...makeElem(), appendChild: (child) => outputs.push(child.textContent) };
 const commandElem = makeElem();
 const modalElem = makeElem();
+const noteModalElem = makeElem();
+
 
 global.fetch = async () => ({ json: async () => ({}) });
 global.btoa = (str) => Buffer.from(str, 'binary').toString('base64');
@@ -50,6 +52,8 @@ global.document = {
     if (id === 'output') return outputElem;
     if (id === 'command') return commandElem;
     if (id === 'modal') return modalElem;
+    if (id === 'note-modal') return noteModalElem;
+
     return makeElem();
   },
   createElement: () => makeElem(),
@@ -82,16 +86,27 @@ global.navigator = {
   const id2 = ids[0];
   assert.notStrictEqual(id2, id1);
 
-  // Typing in modal should also reset timer
-  modalElem.dispatchEvent({ type: 'keydown' });
+  // Typing in note modal should also reset timer
+  noteModalElem.dispatchEvent({ type: 'keydown' });
   assert.strictEqual(lockCalls, 0);
   ids = Array.from(timers.keys());
   assert.strictEqual(ids.length, 1);
   const id3 = ids[0];
   assert.notStrictEqual(id3, id2);
 
+  // Typing in modal should also reset timer
+  modalElem.dispatchEvent({ type: 'keydown' });
+
+  assert.strictEqual(lockCalls, 0);
+  ids = Array.from(timers.keys());
+  assert.strictEqual(ids.length, 1);
+  const id4 = ids[0];
+  assert.notStrictEqual(id4, id3);
+
+
   // Inactivity triggers lock
-  timers.get(id3)();
+  timers.get(id4)();
+
   assert.strictEqual(lockCalls, 1);
 
   console.log('Inactivity timer reset test passed.');

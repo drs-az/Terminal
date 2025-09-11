@@ -318,7 +318,9 @@ function resetInactivityTimer(){
   }, INACTIVITY_MS);
 }
 function startInactivityTimer(){
+
   interactiveElements.forEach(el => {
+
     if (!el) return;
     el.addEventListener('keydown', resetInactivityTimer);
     el.addEventListener('pointerdown', resetInactivityTimer);
@@ -326,7 +328,9 @@ function startInactivityTimer(){
   resetInactivityTimer();
 }
 function stopInactivityTimer(){
+
   interactiveElements.forEach(el => {
+
     if (!el) return;
     el.removeEventListener('keydown', resetInactivityTimer);
     el.removeEventListener('pointerdown', resetInactivityTimer);
